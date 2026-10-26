@@ -93,6 +93,20 @@ export interface Run {
   durationSec: number
 }
 
+/** Một ngày trong tuần của kế hoạch. weekday: 1=T2 … 7=CN. */
+export interface RoutineDay {
+  weekday: number
+  slugs: string[]
+}
+
+export interface Routine {
+  id?: number
+  name: string
+  source?: 'template' | 'custom'
+  days: RoutineDay[]
+  createdAt: Date
+}
+
 class EmberDB extends Dexie {
   profile!: Table<Profile, number>
   exercises!: Table<Exercise, number>
@@ -103,6 +117,7 @@ class EmberDB extends Dexie {
   sets!: Table<SetEntry, number>
   settings!: Table<SettingRow, string>
   runs!: Table<Run, number>
+  routines!: Table<Routine, number>
 
   constructor() {
     super('ember')
@@ -118,6 +133,9 @@ class EmberDB extends Dexie {
     this.version(2).stores({
       settings: 'key',
       runs: '++id, date'
+    })
+    this.version(3).stores({
+      routines: '++id'
     })
   }
 }
