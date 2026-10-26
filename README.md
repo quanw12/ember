@@ -29,9 +29,14 @@ npm run build   # build production vào dist/
 
 Cài lên điện thoại: mở URL (qua HTTPS khi deploy) bằng Safari/Chrome → *Add to Home Screen*.
 
-## Phát hành & quảng bá
+## Cài lên điện thoại (không cần App Store)
 
-- Deploy tĩnh: GitHub Pages hoặc Cloudflare Pages (free) — build từ repo này
+1. Merge vào `main` — GitHub Actions tự build và deploy lên **https://quanw12.github.io/ember/** (bật 1 lần: *Settings → Pages → Source: GitHub Actions*).
+2. Mở đường dẫn trên bằng **Safari** trên iPhone → nút **Share** → **Add to Home Screen**.
+3. Xong: icon EMBER nằm ở màn hình chính, chạy full màn hình, offline, dữ liệu nằm ngay trên máy. Không chứng chỉ, không tái ký 7 ngày.
+
+## License & credit
+
 - License: MIT (xem [LICENSE](./LICENSE))
 - Nguồn dữ liệu: thư viện bài tập [free-exercise-db](https://github.com/yuhonas/free-exercise-db) + [wger](https://wger.de) (nguồn mở), kế hoạch chạy NHS Couch to 5K, bản đồ OpenStreetMap
 - Disclaimer: EMBER không thay thế bác sĩ hay huấn luyện viên chuyên môn
