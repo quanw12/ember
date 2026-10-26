@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db } from './db'
+import { db, todayStr } from './db'
 import { EXERCISE_SEED, SEED_REV } from './data/exercises.seed'
 import { ROUTINE_TEMPLATES } from './data/routines.seed'
 import { FlameIcon, DumbbellIcon, RouteIcon, TrendIcon, UserIcon } from './components/icons'
 import Onboarding from './views/Onboarding'
 import Today from './views/Today'
-import Gym from './views/Gym'
+import Gym, { type GymView } from './views/Gym'
 import Run from './views/Run'
 import Progress from './views/Progress'
 import ProfileView from './views/Profile'
@@ -23,7 +23,14 @@ const TABS: { id: Tab; label: string; Icon: (p: { className?: string }) => React
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('today')
+  const [gymInit, setGymInit] = useState<GymView | undefined>()
   const profile = useLiveQuery(() => db.profile.get(1))
+
+  const startSession = async (slugs: string[], name: string) => {
+    const id = await db.sessions.add({ date: todayStr(), startedAt: new Date(), name, slugs })
+    setGymInit({ kind: 'session', id })
+    setTab('gym')
+  }
 
   useEffect(() => {
     void (async () => {
@@ -59,7 +66,7 @@ export default function App() {
     <>
       <div className="app">
         {tab === 'today' && <Today onGoGym={() => setTab('gym')} />}
-        {tab === 'gym' && <Gym />}
+        {tab === 'gym' && <Gym initial={gymInit} startSession={startSession} />}
         {tab === 'run' && <Run />}
         {tab === 'progress' && <Progress />}
         {tab === 'profile' && <ProfileView />}
