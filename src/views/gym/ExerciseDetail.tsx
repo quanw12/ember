@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db, type Exercise } from '../../db'
+import { db, epley, type Exercise, type SetEntry, type Session } from '../../db'
 import { MUSCLES, EQUIPMENT } from '../../data/exercises.seed'
 
 const eqLabel = (id: string): string => EQUIPMENT.find(e => e.id === id)?.label ?? id
@@ -11,9 +11,41 @@ const tiktokSearch = (nameEn: string): string =>
 const youtubeSearch = (nameEn: string): string =>
   `https://www.youtube.com/results?search_query=${encodeURIComponent(`${nameEn} form tutorial`)}`
 
+function weekStart(d: Date): Date {
+  const x = new Date(d)
+  const day = (x.getDay() + 6) % 7
+  x.setDate(x.getDate() - day)
+  x.setHours(0, 0, 0, 0)
+  return x
+}
+
+type Tab = 'about' | 'history' | 'progress' | 'records'
+
+interface SessionGroup { session: Session; sets: SetEntry[] }
+
 export default function ExerciseDetail({ slug, onBack }: { slug: string; onBack: () => void }) {
   const [pinUrl, setPinUrl] = useState('')
+  const [tab, setTab] = useState<Tab>('about')
   const exercise = useLiveQuery(() => db.exercises.where('slug').equals(slug).first())
+
+  const history = useLiveQuery(async (): Promise<SessionGroup[]> => {
+    const all = await db.sets.where('exerciseSlug').equals(slug).toArray()
+    const done = all.filter(s => s.done)
+    if (done.length === 0) return []
+    const sessionIds = [...new Set(done.map(s => s.sessionId))]
+    const sessions = (await db.sessions.bulkGet(sessionIds)).filter(s => s != null) as Session[]
+    const byId = new Map(sessions.map(s => [s.id!, s]))
+    const groups = new Map<number, SetEntry[]>()
+    for (const s of done) {
+      const arr = groups.get(s.sessionId) ?? []
+      arr.push(s)
+      groups.set(s.sessionId, arr)
+    }
+    return [...groups.entries()]
+      .map(([sid, sets]) => ({ session: byId.get(sid)!, sets: sets.sort((a, b) => a.idx - b.idx) }))
+      .filter(g => g.session)
+      .sort((a, b) => b.session.startedAt.getTime() - a.session.startedAt.getTime())
+  }, [slug])
 
   if (!exercise) return null
   const ex: Exercise = exercise
@@ -27,6 +59,26 @@ export default function ExerciseDetail({ slug, onBack }: { slug: string; onBack:
   const unpin = async () => {
     if (ex.id != null) await db.exercises.update(ex.id, { pinnedVideoUrl: undefined })
   }
+
+  const groups = history ?? []
+  const maxWeight = groups.flatMap(g => g.sets).reduce<SetEntry | null>((best, s) => (!best || s.kg > best.kg ? s : best), null)
+  const bestE1rm = groups.flatMap(g => g.sets).reduce<number>((best, s) => Math.max(best, epley(s.kg, s.reps)), 0)
+  const bestVolumeGroup = groups.map(g => ({ g, v: g.sets.reduce((a, s) => a + s.kg * s.reps, 0) })).sort((a, b) => b.v - a.v)[0]
+
+  const weeks: { start: Date; volume: number }[] = []
+  if (groups.length > 0) {
+    const now0 = weekStart(new Date())
+    for (let i = 7; i >= 0; i--) {
+      const start = new Date(now0); start.setDate(start.getDate() - i * 7)
+      const end = new Date(start); end.setDate(end.getDate() + 7)
+      const volume = groups
+        .filter(g => g.session.startedAt >= start && g.session.startedAt < end)
+        .flatMap(g => g.sets)
+        .reduce((a, s) => a + s.kg * s.reps, 0)
+      weeks.push({ start, volume })
+    }
+  }
+  const maxWeekVolume = Math.max(1, ...weeks.map(w => w.volume))
 
   return (
     <>
@@ -70,19 +122,95 @@ export default function ExerciseDetail({ slug, onBack }: { slug: string; onBack:
         )}
       </div>
 
-      {ex.steps && ex.steps.length > 0 && (
-        <div className="card">
-          <div className="eyebrow">THỰC HIỆN</div>
-          <ol style={{ margin: '8px 0 0 18px', color: 'var(--text-1)', fontSize: 14, lineHeight: 1.6 }}>
-            {ex.steps.map((s, i) => <li key={i} style={{ marginBottom: 6 }}>{s}</li>)}
-          </ol>
+      <div className="nav nav-pills" style={{ marginTop: 16, display: 'flex', gap: 6, flexWrap: 'wrap' }} role="tablist" aria-label="Mục thông tin bài tập">
+        {([['about', 'Về'], ['history', 'Lịch sử'], ['progress', 'Tiến độ'], ['records', 'Kỷ lục']] as [Tab, string][]).map(([id, label]) => (
+          <button key={id} type="button" onClick={() => setTab(id)}
+            style={{ background: tab === id ? 'var(--red)' : 'transparent', border: '1px solid ' + (tab === id ? 'var(--red)' : 'var(--line-2)'), color: tab === id ? '#fff' : 'var(--text-2)', borderRadius: 999, padding: '8px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'about' && (
+        <>
+          {ex.steps && ex.steps.length > 0 && (
+            <div className="card">
+              <div className="eyebrow">THỰC HIỆN</div>
+              <ol style={{ margin: '8px 0 0 18px', color: 'var(--text-1)', fontSize: 14, lineHeight: 1.6 }}>
+                {ex.steps.map((s, i) => <li key={i} style={{ marginBottom: 6 }}>{s}</li>)}
+              </ol>
+            </div>
+          )}
+          {ex.mistakes && (
+            <div className="card" style={{ borderColor: 'var(--red-deep)' }}>
+              <div className="eyebrow">LỖI THƯỜNG GẶP</div>
+              <div style={{ marginTop: 6, fontSize: 14, lineHeight: 1.55, color: 'var(--text-1)' }}>{ex.mistakes}</div>
+            </div>
+          )}
+        </>
+      )}
+
+      {tab === 'history' && (
+        <div className="card" style={{ padding: 14 }}>
+          {groups.length === 0 && <div className="meta">Chưa có lịch sử — các set bạn tick trong buổi tập sẽ hiện ở đây.</div>}
+          {groups.map(({ session, sets }) => {
+            const best = sets.reduce((b, s) => Math.max(b, epley(s.kg, s.reps)), 0)
+            return (
+              <div className="kv" key={session.id}>
+                <b>
+                  {session.startedAt.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                  <span style={{ display: 'block', fontWeight: 400, color: 'var(--text-2)', fontSize: 12 }} className="ringnum">
+                    {sets.map(s => `${s.kg}×${s.reps}`).join(' · ')}
+                  </span>
+                </b>
+                <span className="ringnum">e1RM {Math.round(best)} kg</span>
+              </div>
+            )
+          })}
         </div>
       )}
 
-      {ex.mistakes && (
-        <div className="card" style={{ borderColor: 'var(--red-deep)' }}>
-          <div className="eyebrow">LỖI THƯỜNG GẶP</div>
-          <div style={{ marginTop: 6, fontSize: 14, lineHeight: 1.55, color: 'var(--text-1)' }}>{ex.mistakes}</div>
+      {tab === 'progress' && (
+        <div className="card" style={{ padding: 14 }}>
+          {groups.length === 0 ? (
+            <div className="meta">Biểu đồ khối lượng theo tuần sẽ xuất hiện sau buổi tập đầu tiên.</div>
+          ) : (
+            <>
+              <div className="eyebrow">VOLUME / TUẦN (KG×LẦN)</div>
+              <svg viewBox="0 0 320 130" style={{ width: '100%', height: 'auto', marginTop: 10 }} role="img" aria-label="Khối lượng tập theo tuần">
+                {weeks.map((w, i) => {
+                  const bw = 320 / 8 - 6
+                  const h = Math.round((w.volume / maxWeekVolume) * 90)
+                  return (
+                    <g key={i}>
+                      <rect x={i * (320 / 8) + 3} y={110 - h} width={bw} height={Math.max(h, w.volume > 0 ? 3 : 0)} rx="4"
+                        fill={i === 7 ? 'var(--red)' : 'var(--line-2)'} />
+                      {w.volume > 0 && (
+                        <text x={i * (320 / 8) + 3 + bw / 2} y={104 - h} textAnchor="middle" fontSize="9" fill="var(--text-2)" className="ringnum">{w.volume}</text>
+                      )}
+                    </g>
+                  )
+                })}
+                <text x="3" y="126" fontSize="9" fill="var(--text-3)">8 tuần trước</text>
+                <text x="317" y="126" textAnchor="end" fontSize="9" fill="var(--text-3)">Tuần này</text>
+              </svg>
+            </>
+          )}
+        </div>
+      )}
+
+      {tab === 'records' && (
+        <div className="card" style={{ padding: 14 }}>
+          {groups.length === 0 ? (
+            <div className="meta">Chưa có kỷ lục — cứ tập, EMBER tự ghi cho.</div>
+          ) : (
+            <>
+              <div className="kv"><b>Nặng nhất</b><span className="ringnum">{maxWeight ? `${maxWeight.kg} kg × ${maxWeight.reps} lần` : '—'}</span></div>
+              <div className="kv"><b>1RM ước lượng (Epley)</b><span className="ringnum">{Math.round(bestE1rm)} kg</span></div>
+              <div className="kv"><b>Buổi volume cao nhất</b><span className="ringnum">{bestVolumeGroup ? `${bestVolumeGroup.v} kg×lần · ${bestVolumeGroup.g.session.startedAt.toLocaleDateString('vi-VN')}` : '—'}</span></div>
+              <p className="note">1RM theo công thức Epley: kg × (1 + lần/30) — chỉ dùng để theo dõi xu hướng, không phải mức nên thử trực tiếp.</p>
+            </>
+          )}
         </div>
       )}
     </>

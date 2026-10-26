@@ -49,6 +49,7 @@ export default function SessionRunner({ id, onDone }: { id: number; onDone: () =
   const [now, setNow] = useState(Date.now())
   const [restLeft, setRestLeft] = useState<number | null>(null)
   const [restSec, setRestSec] = useState(90)
+  const [summary, setSummary] = useState<null | { volume: number; setsDone: number; exercises: number; durationMin: number }>(null)
 
   const session = useLiveQuery(() => db.sessions.get(id))
   const exercises = useLiveQuery(() => db.exercises.toArray())
@@ -155,11 +156,39 @@ export default function SessionRunner({ id, onDone }: { id: number; onDone: () =
 
   const finish = async () => {
     if (!window.confirm('Kết thúc buổi tập?')) return
-    await db.sessions.update(id, { endedAt: new Date() })
-    onDone()
+    const allRows = slugs.flatMap(slug => rows[slug] ?? [])
+    const doneRows = allRows.filter(r => r.done)
+    const volume = doneRows.reduce((a, r) => a + Number(r.kg || 0) * Number(r.reps || 0), 0)
+    const ended = new Date()
+    await db.sessions.update(id, { endedAt: ended })
+    setRestLeft(null)
+    setSummary({
+      volume: Math.round(volume),
+      setsDone: doneRows.length,
+      exercises: slugs.length,
+      durationMin: Math.max(1, Math.round((ended.getTime() - session!.startedAt.getTime()) / 60000))
+    })
   }
 
   if (!loaded || !session) return null
+
+  if (summary) {
+    return (
+      <>
+        <div style={{ paddingTop: 28, textAlign: 'center' }}>
+          <div className="eyebrow">HOÀN THÀNH</div>
+          <h1 className="h">Lửa hôm nay đã thổi rồi.</h1>
+        </div>
+        <div className="card">
+          <div className="kv"><b>Thời lượng</b><span className="ringnum">~{summary.durationMin} phút</span></div>
+          <div className="kv"><b>Bài tập</b><span className="ringnum">{summary.exercises}</span></div>
+          <div className="kv"><b>Set hoàn thành</b><span className="ringnum">{summary.setsDone}</span></div>
+          <div className="kv"><b>Tổng volume</b><span className="ringnum">{summary.volume} kg×lần</span></div>
+        </div>
+        <button className="btn" style={{ marginTop: 14 }} onClick={onDone}>Xong</button>
+      </>
+    )
+  }
 
   const started = session.startedAt.getTime()
 
