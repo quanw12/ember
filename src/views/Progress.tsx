@@ -40,15 +40,47 @@ function WeightChart({ weights }: { weights: { date: string; kg: number }[] }) {
   )
 }
 
+/** Cột kcal 7 ngày + đường mục tiêu. */
+function KcalChart({ logs, target }: { logs: { date: string; kcal: number }[]; target: number }) {
+  if (logs.length === 0) return null
+  const W = 320, H = 130, PADY = 16
+  const max = Math.max(target, ...logs.map(l => l.kcal)) * 1.15
+  const slot = W / 7
+  const bw = slot - 10
+  const y = (v: number) => PADY + (1 - v / max) * (H - PADY * 2)
+  const offset = 7 - logs.length // neo phải: ngày mới nhất bên phải
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', marginTop: 10 }} role="img" aria-label="Kcal 7 ngày so với mục tiêu">
+      <line x1={0} x2={W} y1={y(target)} y2={y(target)} stroke="var(--ember)" strokeWidth="1.5" strokeDasharray="4 4" />
+      <text x={W - 4} y={y(target) - 4} textAnchor="end" fontSize="9" fill="var(--ember)" className="ringnum">mục tiêu {target}</text>
+      {logs.map((l, i) => {
+        const inRange = l.kcal >= target * 0.85 && l.kcal <= target * 1.1
+        const bx = (offset + i) * slot + 5
+        const by = y(l.kcal)
+        return (
+          <g key={l.date}>
+            <rect x={bx} y={by} width={bw} height={H - PADY - by} rx="4" fill={inRange ? 'var(--red)' : 'var(--line-2)'} />
+            <text x={bx + bw / 2} y={by - 4} textAnchor="middle" fontSize="9" fill="var(--text-2)" className="ringnum">{l.kcal}</text>
+            <text x={bx + bw / 2} y={H - 4} textAnchor="middle" fontSize="9" fill="var(--text-3)">{l.date.slice(5)}</text>
+          </g>
+        )
+      })}
+    </svg>
+  )
+}
+
 export default function Progress() {
   const today = todayStr()
   const profile = useLiveQuery(() => db.profile.get(1))
   const bodyLogs = useLiveQuery(() => db.bodyLogs.orderBy('date').toArray())
+  const kcalQ = useLiveQuery(() => db.nutritionLogs.orderBy('date').toArray())
+  const sleepQ = useLiveQuery(() => db.sleepLogs.orderBy('date').toArray())
   const [weight, setWeight] = useState('')
   const [belly, setBelly] = useState('')
   const [saved, setSaved] = useState(false)
 
-  if (!profile || !bodyLogs) return null
+  if (!profile || !bodyLogs || !kcalQ || !sleepQ) return null
 
   const weights = bodyLogs
     .filter(l => l.weightKg != null)
@@ -57,11 +89,23 @@ export default function Progress() {
   const weightsChart = weights.slice(-30)
   const trend = movingAvg(weights.map(w => w.kg))
   const todayLog = bodyLogs.find(l => l.date === today)
-  const delta = trend != null && profile.targetWeightKg ? null : null
-  void delta
 
   const goalLabel = GOAL_OPTIONS.find(g => g.id === profile.goal)?.label ?? profile.goal
   const plan = macroPlan(profile)
+
+  const kcalLogs = (kcalQ ?? [])
+    .filter(l => l.kcal != null)
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(-7)
+    .map(l => ({ date: l.date, kcal: l.kcal! }))
+  const sleepLogs7 = (sleepQ ?? [])
+    .filter(l => l.hours != null)
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .slice(0, 7)
+  const avgProtein7 = (kcalQ ?? [])
+    .filter(l => l.proteinG != null)
+    .slice(-7)
+    .reduce((a, l, _, arr) => a + l.proteinG! / arr.length, 0)
 
   const saveLog = async () => {
     const w = Number(weight), b = Number(belly)
@@ -113,6 +157,24 @@ export default function Progress() {
         <WeightChart weights={weightsChart} />
         {weightsChart.length < 2 && <div className="meta" style={{ marginTop: 8 }}>Cần ít nhất 2 lần ghi để vẽ biểu đồ — cân mỗi ngày cho đường mượt.</div>}
         <p className="note">Điểm nhỏ mờ là số cân thô (hay dao động do nước); đường đậm là trung bình trượt 7 ngày — hãy đánh giá theo đường đậm.</p>
+      </div>
+
+      <div className="card">
+        <div className="eyebrow">NĂNG LƯỢNG — 7 NGÀY</div>
+        <KcalChart logs={kcalLogs} target={plan.kcal} />
+        {kcalLogs.length === 0 && <div className="meta" style={{ marginTop: 8 }}>Nhập kcal ở tab Hôm nay để thấy biểu đồ so với mục tiêu.</div>}
+        <div className="kv"><b>Protein TB 7 ngày</b><span className="ringnum">{avgProtein7 > 0 ? `${Math.round(avgProtein7)} / ${plan.proteinG} g` : '—'}</span></div>
+      </div>
+
+      <div className="card">
+        <div className="eyebrow">GIẤC NGỦ</div>
+        {sleepLogs7.length === 0 && <div className="meta" style={{ marginTop: 6 }}>Nhập giờ ngủ ở tab Hôm nay — ngủ đủ là một nửa của việc tăng cơ.</div>}
+        {sleepLogs7.map(l => (
+          <div className="kv" key={l.id}>
+            <b>{new Date(l.date).toLocaleDateString('vi-VN', { weekday: 'short', day: '2-digit', month: '2-digit' })}</b>
+            <span className="ringnum">{l.hours} giờ {(l.hours ?? 0) >= 7 ? '✓' : ''}</span>
+          </div>
+        ))}
       </div>
 
       <div className="card">
