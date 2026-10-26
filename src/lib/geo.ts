@@ -25,3 +25,27 @@ export function fmtClock(totalSec: number): string {
   const sss = String(ss).padStart(2, '0')
   return h > 0 ? `${h}:${mm}:${sss}` : `${m}:${sss}`
 }
+
+/** Thời gian mỗi km (giây), nội suy giữa hai điểm GPS quanh mốc km. */
+export function splitTimes(points: [number, number, number][], totalKm: number): number[] {
+  const res: number[] = []
+  if (points.length < 2) return res
+  let cum = 0
+  let crossingT = points[0][2]
+  let nextKm = 1
+  for (let i = 1; i < points.length; i++) {
+    const d = haversineKm(points[i - 1][0], points[i - 1][1], points[i][0], points[i][1])
+    const prevCum = cum
+    cum += d
+    while (cum >= nextKm && nextKm <= totalKm + 1e-6) {
+      const need = nextKm - prevCum
+      const frac = d > 0 ? Math.min(1, need / d) : 1
+      const t = points[i - 1][2] + (points[i][2] - points[i - 1][2]) * frac
+      res.push((t - crossingT) / 1000)
+      crossingT = t
+      nextKm += 1
+    }
+  }
+  if (cum - res.length > 0.05) res.push((points[points.length - 1][2] - crossingT) / 1000)
+  return res
+}

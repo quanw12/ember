@@ -32,6 +32,14 @@ export default defineConfig({
               cacheName: 'cdn-images',
               expiration: { maxEntries: 500, maxAgeSeconds: 60 * 60 * 24 * 30 }
             }
+          },
+          {
+            urlPattern: /^https:\/\/[ab]?\.?tile\.openstreetmap\.org\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'osm-tiles',
+              expiration: { maxEntries: 300, maxAgeSeconds: 60 * 60 * 24 * 14 }
+            }
           }
         ]
       }
