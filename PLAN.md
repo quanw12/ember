@@ -1,4 +1,4 @@
-# EMBER — Plan & Requirement (v1.1 chốt)
+# EMBER — Plan & Requirement (v1.2 — Phase 1 + 2 đã giao)
 
 > App luyện tập cá nhân (gym + chạy bộ) dạng PWA, cài lên iPhone Home Screen, chi phí 0đ, dữ liệu lưu trên máy.
 
@@ -120,21 +120,16 @@ Mọi nội dung AI gợi ý thêm (mô tả bài, biến thể) được gắn 
 
 Đơn vị: kg/km/phút mặc định (lb toggle trong Hồ sơ).
 
-## 8. Lộ trình
+## 8. Lộ trình — trạng thái
 
-**Phase 1 — dùng được hằng ngày (bắt đầu ngay sau khi duyệt plan)**
-1. Khung app: PWA shell, 5 tab, dark theme EMBER, logo asset, offline cơ bản, cài Add to Home Screen chuẩn.
-2. Onboarding + tính calo/macro (có nguồn).
-3. Tab Gym: log buổi tập theo bảng HIỆP/TRƯỚC/KG/LẶP, đồng hồ nghỉ, lịch sử theo bài (Lịch sử/Tiến độ/Kỷ lục + 1RM Epley).
-4. Thư viện: nhóm cơ SVG + danh sách bài + trang chi tiết + link TikTok/YouTube + ghim video.
-5. Kế hoạch: 3 template đầu (Full Body, Upper/Lower, PPL) + tự dựng routine cơ bản.
-6. Tab Chạy: GPS + vẽ đường + lưu buổi + lịch sử.
-7. Tiến trình: cân + trung bình trượt + dashboard cơ bản.
-8. Backup xuất/nhập JSON.
+**Phase 1 — ĐÃ GIAO** (nhánh feat/gym-core → running-gps → progress-charts → gym-plans)
+Khung PWA 5 tab · onboarding + calo/macro · log buổi tập (HIỆP/TRƯỚC/KG/LẶP, prefill lần trước, đồng hồ nghỉ) · thư viện 876 bài (free-exercise-db) + hình minh họa + link video TikTok/YouTube + ghim video · lịch sử/tiến độ/kỷ lục 1RM Epley · 4 template kế hoạch (Full Body, Upper/Lower, PPL, PHUL) + tự dựng kế hoạch từng ngày · tab Hôm nay dẫn buổi theo lịch · GPS chạy vẽ đường + lịch sử + split từng km · NHS C25K 9 tuần · cân trung bình trượt + biểu đồ + kcal/ngủ · backup JSON · deploy GitHub Pages tự động.
 
-**Phase 2**: Web Push nhắc nhở + .ics · nhật ký ăn/ngủ · chế độ nữ theo chu kỳ · template còn lại (5×5, 5/3/1, PHUL, C25K, 10K) · superset/kỹ thuật nâng cao · ảnh progress.
+**Phase 2 — ĐÃ GIAO** (nhánh feat/phase2-full)
+Ảnh progress so sánh 2 mốc (lưu cục bộ) · chế độ nữ theo chu kỳ (pha + gợi ý cường độ) · nhắc hằng ngày: cấu hình giờ + thông báo khi mở app + xuất .ics vào Apple Calendar + hướng dẫn iOS Shortcuts. Web Push nền thật cần Cloudflare Worker riêng — để Phase 3 nếu cần.
 
-**Phase 3**: MCP server trên PC (AI assistant đọc/sửa kế hoạch, phân tích tiến trình) · đồng bộ đa thiết bị · AI coach điều chỉnh kế hoạch theo dữ liệu (tư tưởng Fitbod recovery) · widget/bảng ngắn.
+**Phase 3 — TƯƠNG LAI**
+MCP server trên PC (AI assistant đọc/sửa kế hoạch, phân tích tiến trình) · đồng bộ đa thiết bị · AI coach điều chỉnh kế hoạch theo dữ liệu (tư tưởng Fitbod recovery) · Web Push nền thật qua Cloudflare Workers.
 
 ## 9. Cố ý loại bỏ (vì app cá nhân local-first)
 - Bảng xếp hạng / mạng xã hội / bạn bè — không backend cộng đồng.

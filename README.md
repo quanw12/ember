@@ -6,17 +6,15 @@ App luyện tập cá nhân dạng PWA: **gym + chạy bộ + tiến trình**, d
 
 A personal training PWA (gym + running + progress tracking), local-first, offline-capable, zero cost. Install it straight from the browser — no App Store, no signing certificates, no 7-day resigning.
 
-## Tính năng (lộ trình)
+## Tính năng
 
-Xem [PLAN.md](./PLAN.md) cho bản spec đầy đủ. Phase 1:
-
-- Onboarding mục tiêu (cut / bulk / maintain / recomp) → tự tính kcal & macro từ công thức công bố (Mifflin-St Jeor, ISSN)
-- Tab **Hôm nay**: mục tiêu hôm nay, ring tiến độ, nhật ký nhanh ăn/ngủ
-- Tab **Gym**: log buổi tập theo set, thư viện bài tập theo nhóm cơ, lịch sử + 1RM (Epley), kế hoạch mẫu + tự dựng kế hoạch
-- Tab **Chạy**: GPS vẽ đường real-time trên bản đồ, lịch sử, kế hoạch Couch to 5K
-- Tab **Tiến trình**: cân nặng (trung bình trượt), số đo, ảnh progress, biểu đồ
-- Nhắc nhở Web Push tử tế (tối đa 1 thông báo/ngày, im khi đã tập)
-- Backup: xuất/nhập file JSON
+- **Gym**: thư viện 876 bài tập (hình minh họa + hướng dẫn + mức độ, nguồn mở free-exercise-db), lọc theo nhóm cơ/dụng cụ, log buổi tập theo set (HIỆP · TRƯỚC · KG · LẶP) với prefill lần trước, đồng hồ nghỉ tự động, lịch sử + tiến độ + kỷ lục 1RM (Epley), link video TikTok/YouTube + ghim video ưng ý
+- **Kế hoạch tập**: 4 template chuẩn (Full Body, Upper/Lower, PPL, PHUL) hoặc tự dựng từng ngày trong tuần; tab Hôm nay tự chỉ bài đúng thứ
+- **Chạy bộ**: GPS vẽ đường real-time trên bản đồ (OpenStreetMap), pace/ngay lập tức, lịch sử + split từng km, kế hoạch NHS Couch to 5K 9 tuần
+- **Tiến trình**: cân nặng với trung bình trượt 7 ngày, ảnh progress so sánh 2 mốc, kcal vs mục tiêu, giấc ngủ, chế độ nữ theo chu kỳ
+- **Onboarding mục tiêu** (cut/bulk/maintain/recomp) tính kcal + macro từ Mifflin-St Jeor + ISSN
+- **Nhắc nhở tử tế**: 1 thông báo/ngày, im khi đã tập; xuất .ics vào Apple Calendar; hướng dẫn iOS Shortcuts
+- **Local-first**: không tài khoản, không server, chạy offline, backup/restore JSON
 
 ## Chạy dự án
 
