@@ -49,7 +49,7 @@ export default function App() {
   return (
     <>
       <div className="app">
-        {tab === 'today' && <Today />}
+        {tab === 'today' && <Today onGoGym={() => setTab('gym')} />}
         {tab === 'gym' && <Gym />}
         {tab === 'run' && <Run />}
         {tab === 'progress' && <Progress />}

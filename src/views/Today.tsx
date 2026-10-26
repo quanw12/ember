@@ -14,7 +14,7 @@ function greeting(): string {
 
 const DAYS = ['Chủ nhật', 'Thứ hai', 'Thứ ba', 'Thứ tư', 'Thứ năm', 'Thứ sáu', 'Thứ bảy']
 
-export default function Today() {
+export default function Today({ onGoGym }: { onGoGym: () => void }) {
   const today = todayStr()
   const profile = useLiveQuery(() => db.profile.get(1))
   const bodyLogs = useLiveQuery(() => db.bodyLogs.orderBy('date').toArray())
@@ -115,9 +115,9 @@ export default function Today() {
         <div className="eyebrow">GYM · HÔM NAY</div>
         <h2 className="h" style={{ marginTop: 4 }}>Buổi tập đang trên đường về.</h2>
         <div className="meta">Kế hoạch mẫu + tự dựng kế hoạch sẽ có trong các commit kế tiếp. Mọi dữ liệu bạn nhập đều được giữ.</div>
-        <button className="btn ghost" style={{ marginTop: 12 }} disabled>
+        <button className="btn" style={{ marginTop: 12 }} onClick={onGoGym}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
-            <DumbbellIcon /> BẮT ĐẦU TẬP — SẮP CÓ
+            <DumbbellIcon /> BẮT ĐẦU TẬP
           </span>
         </button>
       </div>
