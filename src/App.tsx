@@ -65,7 +65,7 @@ export default function App() {
   return (
     <>
       <div className="app">
-        {tab === 'today' && <Today onGoGym={() => setTab('gym')} />}
+        {tab === 'today' && <Today onGoGym={() => setTab('gym')} onQuickStart={startSession} />}
         {tab === 'gym' && <Gym initial={gymInit} startSession={startSession} />}
         {tab === 'run' && <Run />}
         {tab === 'progress' && <Progress />}

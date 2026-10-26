@@ -83,7 +83,10 @@ export default function SessionRunner({ id, onDone }: { id: number; onDone: () =
       const filled: Record<string, Row[]> = {}
       for (const slug of order) {
         const p = prevs[slug] ?? []
-        filled[slug] = (grouped[slug] ?? []).map((r, i) => ({ ...r, prev: p[i] ?? p[p.length - 1] ?? '' }))
+        const existingRows = grouped[slug] ?? []
+        filled[slug] = existingRows.length > 0
+          ? existingRows.map((r, i) => ({ ...r, prev: p[i] ?? p[p.length - 1] ?? '' }))
+          : [makeRow(slug, 0, p)] // buổi mới theo kế hoạch: tự tạo hiệp đầu với số lần trước
       }
       setSlugs(order); setRows(filled); setPrevBySlug(prevs); setLoaded(true)
     })()

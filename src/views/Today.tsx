@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, todayStr, movingAvg } from '../db'
 import { macroPlan, GOAL_OPTIONS } from '../lib/calc'
+import { weekdayShort, jsDayToWeekday } from '../data/routines.seed'
 import { FlameIcon, DumbbellIcon } from '../components/icons'
 
 function greeting(): string {
@@ -14,13 +15,16 @@ function greeting(): string {
 
 const DAYS = ['Chủ nhật', 'Thứ hai', 'Thứ ba', 'Thứ tư', 'Thứ năm', 'Thứ sáu', 'Thứ bảy']
 
-export default function Today({ onGoGym }: { onGoGym: () => void }) {
+export default function Today({ onGoGym, onQuickStart }: { onGoGym: () => void; onQuickStart: (slugs: string[], name: string) => void }) {
   const today = todayStr()
   const profile = useLiveQuery(() => db.profile.get(1))
   const bodyLogs = useLiveQuery(() => db.bodyLogs.orderBy('date').toArray())
   const todayNutrition = useLiveQuery(() => db.nutritionLogs.where('date').equals(today).first())
   const todaySleep = useLiveQuery(() => db.sleepLogs.where('date').equals(today).first())
   const sessions = useLiveQuery(() => db.sessions.toArray())
+  const activeRow = useLiveQuery(() => db.settings.get('activeRoutineId'))
+  const routines = useLiveQuery(() => db.routines.toArray())
+  const exercises = useLiveQuery(() => db.exercises.toArray())
 
   const [kcal, setKcal] = useState('')
   const [protein, setProtein] = useState('')
@@ -62,6 +66,12 @@ export default function Today({ onGoGym }: { onGoGym: () => void }) {
   }
 
   const goalLabel = GOAL_OPTIONS.find(g => g.id === profile.goal)?.label ?? profile.goal
+
+  const activeRoutine = routines?.find(r => r.id === (activeRow?.value as number | undefined))
+  const weekday = jsDayToWeekday(new Date().getDay())
+  const todayPlanDay = activeRoutine?.days.find(d => d.weekday === weekday)
+  const planSlugs = todayPlanDay?.slugs ?? []
+  const nameOf = (slug: string): string => exercises?.find(e => e.slug === slug)?.name ?? slug
 
   const saveQuickLog = async () => {
     const k = Number(kcal), p = Number(protein), s = Number(sleep)
@@ -111,16 +121,29 @@ export default function Today({ onGoGym }: { onGoGym: () => void }) {
         </div>
       </div>
 
-      <div className="card">
-        <div className="eyebrow">GYM · HÔM NAY</div>
-        <h2 className="h" style={{ marginTop: 4 }}>Buổi tập đang trên đường về.</h2>
-        <div className="meta">Kế hoạch mẫu + tự dựng kế hoạch sẽ có trong các commit kế tiếp. Mọi dữ liệu bạn nhập đều được giữ.</div>
-        <button className="btn" style={{ marginTop: 12 }} onClick={onGoGym}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
-            <DumbbellIcon /> BẮT ĐẦU TẬP
-          </span>
-        </button>
-      </div>
+      {planSlugs.length > 0 && activeRoutine ? (
+        <div className="card">
+          <div className="eyebrow">GYM · {weekdayShort(weekday).toUpperCase()} · {activeRoutine.name.toUpperCase()}</div>
+          <h2 className="h" style={{ marginTop: 4 }}>Hôm nay: {planSlugs.length} bài</h2>
+          <div className="meta">{planSlugs.map(nameOf).join(' · ')}</div>
+          <button className="btn" style={{ marginTop: 12 }} onClick={() => onQuickStart(planSlugs, `${activeRoutine.name} · ${weekdayShort(weekday)}`)}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
+              <DumbbellIcon /> BẮT ĐẦU TẬP
+            </span>
+          </button>
+        </div>
+      ) : (
+        <div className="card">
+          <div className="eyebrow">GYM · HÔM NAY</div>
+          <h2 className="h" style={{ marginTop: 4 }}>Buổi tập đang trên đường về.</h2>
+          <div className="meta">Chọn kế hoạch ở tab Gym để Hôm nay tự chỉ bài — hoặc tập tự do ngay.</div>
+          <button className="btn" style={{ marginTop: 12 }} onClick={onGoGym}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
+              <DumbbellIcon /> BẮT ĐẦU TẬP
+            </span>
+          </button>
+        </div>
+      )}
 
       <div className="card">
         <div className="eyebrow">NHẬT KÝ NHANH · 10 GIÂY</div>
