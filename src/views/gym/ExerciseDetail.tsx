@@ -91,8 +91,21 @@ export default function ExerciseDetail({ slug, onBack }: { slug: string; onBack:
         <div className="seg" style={{ marginTop: 10 }}>
           <span className="streak" style={{ color: 'var(--text-2)', fontWeight: 500 }}>{muscleLabel(ex.muscle)}</span>
           <span className="streak" style={{ color: 'var(--text-2)', fontWeight: 500 }}>{eqLabel(ex.equipment)}</span>
+          {ex.level && <span className="streak" style={{ color: 'var(--text-2)', fontWeight: 500 }}>{ex.level}</span>}
         </div>
       </div>
+
+      {ex.images && ex.images.length > 0 && (
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          <div style={{ display: 'flex' }}>
+            {ex.images.map(u => (
+              <img key={u} src={u} alt={`Minh họa ${ex.name}`} loading="lazy"
+                style={{ width: '50%', display: 'block', background: '#FFFFFF' }}
+                onError={e => { e.currentTarget.style.display = 'none' }} />
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="card">
         <div className="eyebrow">VIDEO HƯỚNG DẪN</div>

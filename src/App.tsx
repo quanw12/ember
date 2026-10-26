@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db, todayStr } from './db'
 import { EXERCISE_SEED, SEED_REV } from './data/exercises.seed'
 import { ROUTINE_TEMPLATES } from './data/routines.seed'
+import { importLibrary, LIB_REV } from './data/library-import'
 import { FlameIcon, DumbbellIcon, RouteIcon, TrendIcon, UserIcon } from './components/icons'
 import Onboarding from './views/Onboarding'
 import Today from './views/Today'
@@ -54,6 +55,14 @@ export default function App() {
           await db.routines.add({ name: t.name, source: 'template', days: t.days, createdAt: new Date() })
         }
         await db.settings.put({ key: 'routinesSeeded', value: true })
+      }
+
+      const libRow = await db.settings.get('libRev')
+      if ((libRow?.value as number | undefined) !== LIB_REV) {
+        try {
+          await importLibrary()
+          await db.settings.put({ key: 'libRev', value: LIB_REV })
+        } catch { /* offline lần đầu — sẽ thử lại ở lần mở sau */ }
       }
     })()
   }, [])

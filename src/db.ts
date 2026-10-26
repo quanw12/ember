@@ -30,6 +30,8 @@ export interface Exercise {
   steps?: string[]
   mistakes?: string
   pinnedVideoUrl?: string
+  images?: string[]
+  level?: string
   custom?: boolean
 }
 
