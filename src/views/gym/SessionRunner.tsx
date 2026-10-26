@@ -47,6 +47,8 @@ export default function SessionRunner({ id, onDone }: { id: number; onDone: () =
   const [loaded, setLoaded] = useState(false)
   const [picker, setPicker] = useState(false)
   const [now, setNow] = useState(Date.now())
+  const [restLeft, setRestLeft] = useState<number | null>(null)
+  const [restSec, setRestSec] = useState(90)
 
   const session = useLiveQuery(() => db.sessions.get(id))
   const exercises = useLiveQuery(() => db.exercises.toArray())
@@ -59,6 +61,12 @@ export default function SessionRunner({ id, onDone }: { id: number; onDone: () =
     const t = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(t)
   }, [])
+
+  useEffect(() => {
+    if (restLeft == null || restLeft <= 0) return
+    const t = setInterval(() => setRestLeft(v => (v != null && v > 0 ? v - 1 : null)), 1000)
+    return () => clearInterval(t)
+  }, [restLeft != null && restLeft > 0])
 
   useEffect(() => {
     void (async () => {
@@ -131,6 +139,7 @@ export default function SessionRunner({ id, onDone }: { id: number; onDone: () =
         const newId = await db.sets.add(entry)
         updateRow(slug, idx, { id: newId, done: true })
       }
+      setRestLeft(restSec)
     } else {
       if (row.id != null) await db.sets.update(row.id, { done: false })
       updateRow(slug, idx, { done: false })
@@ -212,6 +221,23 @@ export default function SessionRunner({ id, onDone }: { id: number; onDone: () =
 
       {picker && (
         <ExercisePicker exercises={exercises ?? []} picked={slugs} onPick={addExercise} onClose={() => setPicker(false)} />
+      )}
+
+      {restLeft != null && restLeft > 0 && (
+        <div className="restbar" role="timer" aria-live="polite">
+          <div className="inner">
+            <div className="row" style={{ justifyContent: 'space-between' }}>
+              <span className="time">{fmtDuration(restLeft * 1000)}</span>
+              <div className="btns">
+                {[60, 90, 120].map(sec => (
+                  <button key={sec} type="button" className={`chip ${restSec === sec ? 'on' : ''}`} onClick={() => { setRestSec(sec); setRestLeft(sec) }}>{sec}s</button>
+                ))}
+                <button type="button" className="chip" onClick={() => setRestLeft(v => (v ?? 0) + 15)}>+15s</button>
+                <button type="button" className="chip" onClick={() => setRestLeft(null)}>Bỏ qua</button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </>
   )
