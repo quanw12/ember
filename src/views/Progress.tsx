@@ -1,7 +1,78 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db, todayStr, movingAvg } from '../db'
+import { db, todayStr, movingAvg, type Photo } from '../db'
 import { macroPlan, GOAL_OPTIONS, fmtWeeks } from '../lib/calc'
+import { compressImage } from '../lib/image'
+
+function PhotosCard() {
+  const photos = useLiveQuery(() => db.photos.orderBy('date').reverse().toArray()) as Photo[] | undefined
+  const [sel, setSel] = useState<number[]>([])
+  const [busy, setBusy] = useState(false)
+
+  const urls = useMemo(() => {
+    const m = new Map<number, string>()
+    for (const p of photos ?? []) m.set(p.id!, URL.createObjectURL(p.blob))
+    return m
+  }, [photos])
+  useEffect(() => () => { urls.forEach(u => URL.revokeObjectURL(u)) }, [urls])
+
+  const add = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0]
+    e.target.value = ''
+    if (!f) return
+    setBusy(true)
+    try {
+      const blob = await compressImage(f)
+      await db.photos.add({ date: todayStr(), blob })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const toggle = (id: number) => setSel(s =>
+    s.includes(id) ? s.filter(x => x !== id) : s.length >= 2 ? [s[1], id] : [...s, id]
+  )
+  const remove = async (id: number) => {
+    if (!window.confirm('Xoá ảnh này?')) return
+    await db.photos.delete(id)
+    setSel(s => s.filter(x => x !== id))
+  }
+
+  const selected = (photos ?? []).filter(p => sel.includes(p.id!))
+
+  return (
+    <div className="card">
+      <div className="eyebrow">ẢNH PROGRESS</div>
+      {selected.length === 2 && (
+        <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+          {selected.map(p => (
+            <div key={p.id} style={{ flex: 1 }}>
+              <img src={urls.get(p.id!)} alt={`Ảnh ${p.date}`} style={{ width: '100%', display: 'block', borderRadius: 12 }} />
+              <div className="meta" style={{ textAlign: 'center' }}>{p.date}</div>
+            </div>
+          ))}
+        </div>
+      )}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 10 }}>
+        {(photos ?? []).map(p => (
+          <div key={p.id} style={{ position: 'relative' }}>
+            <button type="button" onClick={() => toggle(p.id!)}
+              style={{ padding: 0, border: sel.includes(p.id!) ? '2px solid var(--red)' : '1px solid var(--line-2)', borderRadius: 10, overflow: 'hidden', cursor: 'pointer', display: 'block', width: '100%', background: 'none' }}>
+              <img src={urls.get(p.id!)} alt={`Ảnh ${p.date}`} style={{ width: '100%', display: 'block' }} />
+            </button>
+            <button type="button" onClick={() => remove(p.id!)} aria-label="Xoá ảnh"
+              style={{ position: 'absolute', top: 4, right: 4, width: 22, height: 22, borderRadius: '50%', border: 'none', background: 'rgba(10,10,12,.8)', color: 'var(--text-2)', cursor: 'pointer', fontSize: 12 }}>×</button>
+          </div>
+        ))}
+      </div>
+      <label className="btn ghost" style={{ marginTop: 12, textAlign: 'center', cursor: 'pointer' }}>
+        {busy ? 'Đang xử lý…' : (photos?.length ?? 0) > 0 ? '+ Thêm ảnh (chọn 2 để so sánh)' : '+ Chụp/Thêm ảnh đầu tiên'}
+        <input type="file" accept="image/*" style={{ display: 'none' }} onChange={add} />
+      </label>
+      <p className="note">Ảnh nén và lưu ngay trên máy — không upload đi đâu. Chọn 2 ảnh để so sánh hai mốc cạnh nhau.</p>
+    </div>
+  )
+}
 
 /** Chuỗi điểm cân thô + đường trung bình trượt 7 ngày. */
 function WeightChart({ weights }: { weights: { date: string; kg: number }[] }) {
@@ -158,6 +229,8 @@ export default function Progress() {
         {weightsChart.length < 2 && <div className="meta" style={{ marginTop: 8 }}>Cần ít nhất 2 lần ghi để vẽ biểu đồ — cân mỗi ngày cho đường mượt.</div>}
         <p className="note">Điểm nhỏ mờ là số cân thô (hay dao động do nước); đường đậm là trung bình trượt 7 ngày — hãy đánh giá theo đường đậm.</p>
       </div>
+
+      <PhotosCard />
 
       <div className="card">
         <div className="eyebrow">NĂNG LƯỢNG — 7 NGÀY</div>
