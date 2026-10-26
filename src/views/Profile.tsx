@@ -1,10 +1,17 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, todayStr } from '../db'
 import { ACTIVITY_OPTIONS, GOAL_OPTIONS, macroPlan, fmtWeeks, cycleInfo, PHASE_LABEL } from '../lib/calc'
+import { exportIcs } from '../lib/calendar'
+import type { ReminderCfg } from '../lib/reminders'
+
+const pad = (n: number): string => String(n).padStart(2, '0')
 
 export default function ProfileView() {
   const profile = useLiveQuery(() => db.profile.get(1))
   const cycleQ = useLiveQuery(() => db.cycleLogs.orderBy('date').reverse().toArray())
+  const remRow = useLiveQuery(() => db.settings.get('reminder'))
+  const rem = (remRow?.value ?? null) as ReminderCfg | null
+  const notifPermission = typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'
 
   if (!profile) return null
   const plan = macroPlan(profile)
@@ -31,6 +38,14 @@ export default function ProfileView() {
 
   const markCycleStart = async () => {
     await db.cycleLogs.add({ date: todayStr(), kind: 'start' })
+  }
+
+  const setRem = (patch: Partial<ReminderCfg>) => {
+    const next: ReminderCfg = { enabled: rem?.enabled ?? false, hour: rem?.hour ?? 18, minute: rem?.minute ?? 0, ...patch }
+    void db.settings.put({ key: 'reminder', value: next })
+  }
+  const askPermission = async () => {
+    if (typeof Notification !== 'undefined') await Notification.requestPermission()
   }
 
   return (
@@ -81,6 +96,27 @@ export default function ProfileView() {
           })()}
         </div>
       )}
+
+      <div className="card">
+        <div className="eyebrow">NHẮC NHỞ HẰNG NGÀY</div>
+        <div className="seg" style={{ marginTop: 8 }}>
+          <button type="button" className={!rem?.enabled ? 'on' : ''} onClick={() => setRem({ enabled: false })}>Tắt</button>
+          <button type="button" className={rem?.enabled ? 'on' : ''} onClick={() => setRem({ enabled: true })}>Bật</button>
+        </div>
+        <label className="f" htmlFor="rtime">Giờ nhắc (mỗi ngày 1 lần — tập xong là im)</label>
+        <input id="rtime" type="time" value={`${pad(rem?.hour ?? 18)}:${pad(rem?.minute ?? 0)}`}
+          onChange={e => { const [h, m] = e.target.value.split(':').map(Number); if (Number.isFinite(h) && Number.isFinite(m)) setRem({ hour: h, minute: m }) }} />
+        <div className="kv"><b>Quyền thông báo</b><span>
+          {notifPermission === 'granted' ? 'Đã cấp'
+            : notifPermission === 'denied' ? 'Bị chặn — bật lại trong Cài đặt Safari'
+            : notifPermission === 'unsupported' ? 'Không hỗ trợ'
+            : <button type="button" className="btn ghost" style={{ width: 'auto', padding: '8px 14px', fontSize: 11, margin: 0 }} onClick={askPermission}>Cấp quyền</button>}
+        </span></div>
+        <button className="btn ghost" style={{ marginTop: 12 }} onClick={() => void exportIcs()}>Xuất lịch 14 ngày (.ics → Apple Calendar)</button>
+        <p className="note">
+          iOS PWA không gửi thông báo khi app đóng — để nhắc đúng giờ tuyệt đối: mở file .ics và thêm vào Apple Calendar, hoặc dùng app <b>Shortcuts</b> tạo Automation "Time of Day" mở EMBER tại giờ đã hẹn. Khi app đang mở, EMBER tự thông báo đúng giờ hẹn.
+        </p>
+      </div>
 
       <div className="card">
         <div className="eyebrow">DỮ LIỆU — CỦA BẠN, TRÊN MÁY BẠN</div>

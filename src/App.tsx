@@ -4,6 +4,7 @@ import { db, todayStr } from './db'
 import { EXERCISE_SEED, SEED_REV } from './data/exercises.seed'
 import { ROUTINE_TEMPLATES } from './data/routines.seed'
 import { importLibrary, LIB_REV } from './data/library-import'
+import { tickReminder } from './lib/reminders'
 import { FlameIcon, DumbbellIcon, RouteIcon, TrendIcon, UserIcon } from './components/icons'
 import Onboarding from './views/Onboarding'
 import Today from './views/Today'
@@ -65,6 +66,11 @@ export default function App() {
         } catch { /* offline lần đầu — sẽ thử lại ở lần mở sau */ }
       }
     })()
+  }, [])
+
+  useEffect(() => {
+    const t = setInterval(() => { void tickReminder() }, 30_000)
+    return () => clearInterval(t)
   }, [])
 
   if (profile === undefined) return null // Dexie đang nạp
