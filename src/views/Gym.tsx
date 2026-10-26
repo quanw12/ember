@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import Library from './gym/Library'
+import ExerciseDetail from './gym/ExerciseDetail'
 
 type GymView =
   | { kind: 'library' }
@@ -19,11 +20,7 @@ export default function Gym() {
     )
   }
   if (view.kind === 'detail') {
-    return (
-      <div className="place">
-        <b>Trang chi tiết — commit kế tiếp</b>
-      </div>
-    )
+    return <ExerciseDetail slug={view.slug} onBack={() => setView({ kind: 'library' })} />
   }
   return (
     <div className="place">
