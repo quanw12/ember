@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './db'
-import { EXERCISE_SEED } from './data/exercises.seed'
+import { EXERCISE_SEED, SEED_REV } from './data/exercises.seed'
 import { FlameIcon, DumbbellIcon, RouteIcon, TrendIcon, UserIcon } from './components/icons'
 import Onboarding from './views/Onboarding'
 import Today from './views/Today'
@@ -25,9 +25,21 @@ export default function App() {
   const profile = useLiveQuery(() => db.profile.get(1))
 
   useEffect(() => {
-    db.exercises.count().then(n => {
-      if (n === 0) db.exercises.bulkAdd(EXERCISE_SEED)
-    })
+    void (async () => {
+      const row = await db.settings.get('seedRev')
+      if ((row?.value as number | undefined) === SEED_REV) return
+      const existing = await db.exercises.toArray()
+      const bySlug = new Map(existing.map(e => [e.slug, e]))
+      for (const seed of EXERCISE_SEED) {
+        const cur = bySlug.get(seed.slug)
+        if (cur?.id != null) {
+          await db.exercises.update(cur.id, { ...seed, id: cur.id, pinnedVideoUrl: cur.pinnedVideoUrl })
+        } else {
+          await db.exercises.add(seed)
+        }
+      }
+      await db.settings.put({ key: 'seedRev', value: SEED_REV })
+    })()
   }, [])
 
   if (profile === undefined) return null // Dexie đang nạp
