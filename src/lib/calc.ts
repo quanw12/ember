@@ -105,3 +105,34 @@ export function fmtWeeks(weeks: number | null): string {
   if (weeks < 1) return '< 1 tuần'
   return `~${weeks} tuần`
 }
+
+export type CyclePhase = 'kinh' | 'noi-tiet' | 'rung-trung' | 'hoang-the'
+
+export const PHASE_LABEL: Record<CyclePhase, string> = {
+  'kinh': 'Kỳ kinh',
+  'noi-tiet': 'Nội tiết cao',
+  'rung-trung': 'Rụng trứng',
+  'hoang-the': 'Hoàng thể'
+}
+
+/**
+ * Ước lượng pha chu kỳ từ ngày đầu kỳ kinh gần nhất (giả sử chu kỳ đều).
+ * Gợi ý cường độ theo pha — mức phổ biến được ghi nhận trong tài liệu huấn luyện nữ,
+ * mang tính tham khảo, không thay thế tư vấn y tế.
+ */
+export function cycleInfo(lastStartISO: string, cycleLen: number, today = new Date()): { day: number; phase: CyclePhase; tip: string } {
+  const start = new Date(lastStartISO + 'T00:00:00')
+  const t0 = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+  const days = Math.floor((t0.getTime() - start.getTime()) / 86400000)
+  const day = (days % cycleLen) + 1
+  if (day <= 5) {
+    return { day, phase: 'kinh', tip: 'Tuần kinh: giảm nhẹ cường độ nếu thấy mệt, ưu tiên phục hồi, uống đủ nước và bổ sung sắt (thịt đỏ, rau xanh đậm).' }
+  }
+  if (day <= 13) {
+    return { day, phase: 'noi-tiet', tip: 'Nội tiết đang tăng: cơ thể hồi phục tốt — đây là lúc hợp lý để tăng tải (nâng nặng hơn hoặc thêm một set).' }
+  }
+  if (day <= 16) {
+    return { day, phase: 'rung-trung', tip: 'Giai đoạn rụng trứng: nhiều người thấy khỏe nhất, nhưng dây chằng lỏng hơn — giữ kỹ thuật chuẩn, cẩn thận khi thử mức nặng hoàn toàn mới.' }
+  }
+  return { day, phase: 'hoang-the', tip: 'Tuần hoàng thể: có thể thấy nặng nề và dễ đói hơn — giữ lịch tập, giảm nhẹ nếu cần, tăng protein và ngủ đủ.' }
+}

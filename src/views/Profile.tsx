@@ -1,9 +1,10 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, todayStr } from '../db'
-import { ACTIVITY_OPTIONS, GOAL_OPTIONS, macroPlan, fmtWeeks } from '../lib/calc'
+import { ACTIVITY_OPTIONS, GOAL_OPTIONS, macroPlan, fmtWeeks, cycleInfo, PHASE_LABEL } from '../lib/calc'
 
 export default function ProfileView() {
   const profile = useLiveQuery(() => db.profile.get(1))
+  const cycleQ = useLiveQuery(() => db.cycleLogs.orderBy('date').reverse().toArray())
 
   if (!profile) return null
   const plan = macroPlan(profile)
@@ -26,6 +27,10 @@ export default function ProfileView() {
     if (!window.confirm('Xoá TOÀN BỘ dữ liệu EMBER trên máy này? Hãy xuất backup trước nếu cần.')) return
     await db.delete()
     location.reload()
+  }
+
+  const markCycleStart = async () => {
+    await db.cycleLogs.add({ date: todayStr(), kind: 'start' })
   }
 
   return (
@@ -53,6 +58,29 @@ export default function ProfileView() {
           Nguồn: BMR Mifflin-St Jeor (1990) · protein ISSN 2017 (1.6–2.2 g/kg) · tốc độ đổi cân an toàn 0.5–1%/tuần · lean bulk +200–500 kcal. Số liệu tự tính lại mỗi khi bạn đổi thông tin. EMBER không thay thế tư vấn y tế.
         </p>
       </div>
+
+      {profile.sex === 'female' && (
+        <div className="card">
+          <div className="eyebrow">CHU KỲ — CHẾ ĐỘ NỮ</div>
+          <label className="f" htmlFor="clen">Độ dài chu kỳ (ngày)</label>
+          <input id="clen" type="number" inputMode="numeric" min={20} max={45}
+            value={profile.cycleLenDays ?? 28}
+            onChange={e => { const v = Number(e.target.value); if (v >= 20 && v <= 45) void db.profile.update(1, { cycleLenDays: v }) }} />
+          {(() => {
+            const lastStart = cycleQ?.find(c => c.kind === 'start')?.date
+            return (
+              <>
+                <div className="kv"><b>Kỳ kinh gần nhất</b><span>{lastStart ? new Date(lastStart).toLocaleDateString('vi-VN') : 'chưa ghi'}</span></div>
+                {lastStart && (() => {
+                  const ci = cycleInfo(lastStart, profile.cycleLenDays ?? 28)
+                  return <div className="kv"><b>Hôm nay</b><span>Ngày {ci.day} · {PHASE_LABEL[ci.phase]}</span></div>
+                })()}
+                <button className="btn ghost" style={{ marginTop: 12 }} onClick={markCycleStart}>Kinh bắt đầu hôm nay</button>
+              </>
+            )
+          })()}
+        </div>
+      )}
 
       <div className="card">
         <div className="eyebrow">DỮ LIỆU — CỦA BẠN, TRÊN MÁY BẠN</div>

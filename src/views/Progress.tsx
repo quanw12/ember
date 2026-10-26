@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, todayStr, movingAvg, type Photo } from '../db'
-import { macroPlan, GOAL_OPTIONS, fmtWeeks } from '../lib/calc'
+import { macroPlan, GOAL_OPTIONS, fmtWeeks, cycleInfo, PHASE_LABEL } from '../lib/calc'
 import { compressImage } from '../lib/image'
 
 function PhotosCard() {
@@ -147,11 +147,12 @@ export default function Progress() {
   const bodyLogs = useLiveQuery(() => db.bodyLogs.orderBy('date').toArray())
   const kcalQ = useLiveQuery(() => db.nutritionLogs.orderBy('date').toArray())
   const sleepQ = useLiveQuery(() => db.sleepLogs.orderBy('date').toArray())
+  const cycleQ = useLiveQuery(() => db.cycleLogs.orderBy('date').reverse().toArray())
   const [weight, setWeight] = useState('')
   const [belly, setBelly] = useState('')
   const [saved, setSaved] = useState(false)
 
-  if (!profile || !bodyLogs || !kcalQ || !sleepQ) return null
+  if (!profile || !bodyLogs || !kcalQ || !sleepQ || !cycleQ) return null
 
   const weights = bodyLogs
     .filter(l => l.weightKg != null)
@@ -229,6 +230,20 @@ export default function Progress() {
         {weightsChart.length < 2 && <div className="meta" style={{ marginTop: 8 }}>Cần ít nhất 2 lần ghi để vẽ biểu đồ — cân mỗi ngày cho đường mượt.</div>}
         <p className="note">Điểm nhỏ mờ là số cân thô (hay dao động do nước); đường đậm là trung bình trượt 7 ngày — hãy đánh giá theo đường đậm.</p>
       </div>
+
+      {profile.sex === 'female' && (() => {
+        const lastStart = cycleQ.find(c => c.kind === 'start')?.date
+        if (!lastStart) return null
+        const ci = cycleInfo(lastStart, profile.cycleLenDays ?? 28)
+        return (
+          <div className="card">
+            <div className="eyebrow">CHU KỲ · NGÀY {ci.day}</div>
+            <h2 className="h" style={{ marginTop: 4 }}>{PHASE_LABEL[ci.phase]}</h2>
+            <div style={{ fontSize: 14, lineHeight: 1.55, marginTop: 6 }}>{ci.tip}</div>
+            <p className="note">Gợi ý chung theo pha chu kỳ — mỗi người khác nhau, không thay thế tư vấn y tế. Ghi kỳ kinh mới ở tab Hồ sơ.</p>
+          </div>
+        )
+      })()}
 
       <PhotosCard />
 
