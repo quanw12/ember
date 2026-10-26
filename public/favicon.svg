@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="emberGrad" gradientUnits="userSpaceOnUse" x1="0" y1="58" x2="0" y2="334">
+      <stop offset="0" stop-color="#FF6B57"/>
+      <stop offset="0.45" stop-color="#E8232A"/>
+      <stop offset="1" stop-color="#7E0C18"/>
+    </linearGradient>
+    <radialGradient id="emberGlow" cx="0.5" cy="0.45" r="0.55">
+      <stop offset="0" stop-color="#E8232A" stop-opacity="0.30"/>
+      <stop offset="1" stop-color="#E8232A" stop-opacity="0"/>
+    </radialGradient>
+    <path id="spark" d="M0 -9 L2.1 -2.1 L9 0 L2.1 2.1 L0 9 L-2.1 2.1 L-9 0 L-2.1 -2.1 Z"/>
+    <g id="half" fill="none" stroke-width="11" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M242 120 C239 131 237 137 233 143"/>
+      <path d="M233 143 C213 149 196 153 180 165 C168 174 159 189 153 205"/>
+      <path d="M153 205 C149 222 149 240 153 256"/>
+      <path d="M248 167 C231 163 213 165 199 173"/>
+      <path d="M251 187 C237 179 219 179 205 187"/>
+      <path d="M251 223 C237 229 221 225 209 213"/>
+      <path d="M206 225 C213 254 225 281 244 306"/>
+      <path d="M238 238 Q247 243 254 240"/>
+      <path d="M236 262 Q247 266 254 264"/>
+      <path d="M238 287 Q247 291 254 289"/>
+    </g>
+    <g id="torso">
+      <use href="#half"/>
+      <use href="#half" transform="translate(512,0) scale(-1,1)"/>
+      <g fill="none" stroke-width="11" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="256" cy="88" r="30"/>
+        <path d="M256 168 L256 305"/>
+        <path d="M249 310 L241 333"/>
+        <path d="M263 310 L271 333"/>
+      </g>
+    </g>
+    <g id="sparks" fill="none" stroke-width="3" stroke-linejoin="round">
+      <use href="#spark" transform="translate(112,122) scale(1.15) rotate(15)"/>
+      <use href="#spark" transform="translate(400,100) scale(0.8) rotate(-12)"/>
+      <use href="#spark" transform="translate(408,242) scale(0.62) rotate(24)"/>
+      <use href="#spark" transform="translate(100,266) scale(0.66) rotate(-20)"/>
+    </g>
+  </defs>
+  <rect x="8" y="8" width="496" height="496" rx="118" fill="#0B0B0E"/>
+  <circle cx="256" cy="212" r="196" fill="url(#emberGlow)"/>
+  <use href="#torso" transform="translate(46,97) scale(0.815)" stroke="url(#emberGrad)"/>
+  <use href="#sparks" transform="translate(38,58) scale(0.9)" stroke="#FF7A45"/>
+</svg>
