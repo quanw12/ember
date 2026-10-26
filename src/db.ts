@@ -27,6 +27,9 @@ export interface Exercise {
   muscle: string
   equipment: string
   keywords: string[]
+  steps?: string[]
+  mistakes?: string
+  pinnedVideoUrl?: string
   custom?: boolean
 }
 
@@ -57,6 +60,7 @@ export interface Session {
   startedAt: Date
   endedAt?: Date
   name: string
+  slugs?: string[]
   note?: string
 }
 
@@ -73,6 +77,22 @@ export interface SetEntry {
   ts: Date
 }
 
+export interface SettingRow {
+  key: string
+  value: unknown
+}
+
+export interface Run {
+  id?: number
+  date: string
+  startedAt: Date
+  endedAt: Date
+  /** Điểm GPS nén: [lat, lng, epochMs]. */
+  points: [number, number, number][]
+  distanceKm: number
+  durationSec: number
+}
+
 class EmberDB extends Dexie {
   profile!: Table<Profile, number>
   exercises!: Table<Exercise, number>
@@ -81,6 +101,8 @@ class EmberDB extends Dexie {
   sleepLogs!: Table<SleepLog, number>
   sessions!: Table<Session, number>
   sets!: Table<SetEntry, number>
+  settings!: Table<SettingRow, string>
+  runs!: Table<Run, number>
 
   constructor() {
     super('ember')
@@ -92,6 +114,10 @@ class EmberDB extends Dexie {
       sleepLogs: '++id, date',
       sessions: '++id, date',
       sets: '++id, sessionId, exerciseSlug'
+    })
+    this.version(2).stores({
+      settings: 'key',
+      runs: '++id, date'
     })
   }
 }

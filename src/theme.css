@@ -123,3 +123,20 @@ label.f { display: block; font-size: 12px; color: var(--text-2); margin: 12px 0 
 .place b { display: block; color: var(--text-1); font-size: 16px; margin: 12px 0 6px; }
 
 .ringnum { font-variant-numeric: tabular-nums; }
+
+.restbar {
+  position: fixed; left: 0; right: 0; bottom: calc(64px + env(safe-area-inset-bottom));
+  z-index: 30; display: flex; justify-content: center; pointer-events: none;
+}
+.restbar .inner {
+  pointer-events: auto; width: 100%; max-width: 520px; margin: 0 14px;
+  background: var(--bg-2); border: 1px solid var(--red-deep); border-radius: 18px;
+  padding: 12px 16px; box-shadow: 0 12px 40px rgba(0,0,0,.5);
+}
+.restbar .time { font-size: 22px; font-weight: 800; color: var(--red-soft); font-variant-numeric: tabular-nums; }
+.restbar .btns { display: flex; gap: 6px; align-items: center; }
+.restbar .chip {
+  background: var(--bg-1); border: 1px solid var(--line-2); color: var(--text-2);
+  border-radius: 999px; padding: 6px 10px; font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.restbar .chip.on { border-color: var(--red); color: var(--red-soft); }

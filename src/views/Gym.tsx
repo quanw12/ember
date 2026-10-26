@@ -1,12 +1,27 @@
-import { DumbbellIcon } from '../components/icons'
+import { useState } from 'react'
+import Library from './gym/Library'
+import ExerciseDetail from './gym/ExerciseDetail'
+import SessionRunner from './gym/SessionRunner'
+
+type GymView =
+  | { kind: 'library' }
+  | { kind: 'detail'; slug: string }
+  | { kind: 'session'; id: number }
 
 export default function Gym() {
-  return (
-    <div className="place" style={{ paddingTop: 80 }}>
-      <DumbbellIcon />
-      <b>Tab Gym đang xây dở</b>
-      Log buổi tập theo set (HIỆP · TRƯỚC · KG · LẶP), đồng hồ nghỉ, thư viện bài tập
-      theo nhóm cơ, lịch sử + 1RM, kế hoạch mẫu và tự dựng kế hoạch — sẽ lên trong các commit kế tiếp.
-    </div>
-  )
+  const [view, setView] = useState<GymView>({ kind: 'library' })
+
+  if (view.kind === 'library') {
+    return (
+      <Library
+        onOpen={slug => setView({ kind: 'detail', slug })}
+        onStart={id => setView({ kind: 'session', id })}
+        onResume={id => setView({ kind: 'session', id })}
+      />
+    )
+  }
+  if (view.kind === 'detail') {
+    return <ExerciseDetail slug={view.slug} onBack={() => setView({ kind: 'library' })} />
+  }
+  return <SessionRunner id={view.id} onDone={() => setView({ kind: 'library' })} />
 }
