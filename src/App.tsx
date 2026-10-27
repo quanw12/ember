@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, todayStr, getActiveSlot, activateSlotDb, migrateLegacyIfNeeded } from './db'
 import { EXERCISE_SEED, SEED_REV } from './data/exercises.seed'
@@ -45,7 +45,9 @@ export default function App() {
 function AppShell({ onUsersChanged }: { onUsersChanged: () => void }) {
   const [tab, setTab] = useState<Tab>('today')
   const [gymInit, setGymInit] = useState<GymView | undefined>()
-  const profile = useLiveQuery(() => db.profile.get(1))
+  const seedOnce = useRef<Promise<void> | null>(null)
+  // null = đã nạp xong và chưa có profile (hiện onboarding); undefined = đang nạp
+  const profile = useLiveQuery(async () => (await db.profile.get(1)) ?? null)
 
   const startSession = async (slugs: string[], name: string) => {
     const id = await db.sessions.add({ date: todayStr(), startedAt: new Date(), name, slugs })
@@ -53,32 +55,36 @@ function AppShell({ onUsersChanged }: { onUsersChanged: () => void }) {
     setTab('gym')
   }
 
-  // Seed riêng cho từng hồ sơ (chạy khi AppShell của hồ sơ đó mount)
+  // Seed riêng cho từng hồ sơ (chạy khi AppShell của hồ sơ đó mount).
+  // Single-flight: StrictMode gọi effect 2 lần — chỉ cho 1 chuỗi seed chạy,
+  // nếu không luồng thứ hai sẽ update() giữa chừng và đụng primary key.
   useEffect(() => {
-    void (async () => {
-      const row = await db.settings.get('seedRev')
-      if ((row?.value as number | undefined) !== SEED_REV) {
-        const existing = await db.exercises.toArray()
-        const bySlug = new Map(existing.map(e => [e.slug, e]))
-        for (const seed of EXERCISE_SEED) {
-          const cur = bySlug.get(seed.slug)
-          if (cur?.id != null) {
-            await db.exercises.update(cur.id, { ...seed, id: cur.id, pinnedVideoUrl: cur.pinnedVideoUrl })
-          } else {
-            await db.exercises.add(seed)
+    if (!seedOnce.current) {
+      seedOnce.current = (async () => {
+        const row = await db.settings.get('seedRev')
+        if ((row?.value as number | undefined) !== SEED_REV) {
+          const existing = await db.exercises.toArray()
+          const bySlug = new Map(existing.map(e => [e.slug, e]))
+          for (const seed of EXERCISE_SEED) {
+            const cur = bySlug.get(seed.slug)
+            if (cur?.id != null) {
+              await db.exercises.update(cur.id, { ...seed, pinnedVideoUrl: cur.pinnedVideoUrl })
+            } else {
+              await db.exercises.add(seed)
+            }
           }
+          await db.settings.put({ key: 'seedRev', value: SEED_REV })
         }
-        await db.settings.put({ key: 'seedRev', value: SEED_REV })
-      }
 
-      const libRow = await db.settings.get('libRev')
-      if ((libRow?.value as number | undefined) !== LIB_REV) {
-        try {
-          await importLibrary()
-          await db.settings.put({ key: 'libRev', value: LIB_REV })
-        } catch { /* offline lần đầu — sẽ thử lại ở lần mở sau */ }
-      }
-    })()
+        const libRow = await db.settings.get('libRev')
+        if ((libRow?.value as number | undefined) !== LIB_REV) {
+          try {
+            await importLibrary()
+            await db.settings.put({ key: 'libRev', value: LIB_REV })
+          } catch { /* offline lần đầu — sẽ thử lại ở lần mở sau */ }
+        }
+      })()
+    }
   }, [])
 
   useEffect(() => {

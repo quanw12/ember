@@ -162,6 +162,13 @@ class EmberDB extends Dexie {
       photos: '++id, date',
       cycleLogs: '++id, date'
     })
+    // v5+6: exercises trước đây dùng keyPath 'id' không auto-increment → mọi add() không id
+    // đều DataError, thư viện không nạp được. IndexedDB không sửa được primary key,
+    // phải xoá store rồi tạo lại (mất exercises đã nạp — sẽ tự seed/import lại).
+    this.version(5).stores({ exercises: null })
+    this.version(6).stores({
+      exercises: '++id, slug, muscle, equipment'
+    })
   }
 }
 

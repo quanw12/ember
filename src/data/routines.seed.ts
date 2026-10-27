@@ -69,6 +69,7 @@ export async function ensureTemplatesFor(equipment: Profile['equipment']): Promi
   const rSeed = (rSeedRow?.value as number | undefined) ?? 0
   if (rSeed >= ROUTINES_SEED_REV) return
   const exercises = await db.exercises.toArray()
+  if (exercises.length === 0) return // thư viện chưa nạp xong — thử lại ở lần mở sau, đừng đốt cờ
   const bySlug = new Map(exercises.map(e => [e.slug, e]))
   const allowed = new Set(ALLOWED_EQUIPMENT[equipment] ?? ALLOWED_EQUIPMENT.full)
   const existingNames = new Set((await db.routines.toArray()).map(r => r.name))
