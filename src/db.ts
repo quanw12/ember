@@ -2,7 +2,6 @@ import Dexie, { type Table } from 'dexie'
 
 export interface Profile {
   id: number // luôn là 1 — mỗi hồ sơ người dùng là một DB riêng
-  name?: string
   sex: 'male' | 'female'
   age: number
   heightCm: number

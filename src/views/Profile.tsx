@@ -4,6 +4,8 @@ import { db, todayStr, listSlots, getActiveSlot, setActiveSlot, activateSlotDb, 
 import { ACTIVITY_OPTIONS, GOAL_OPTIONS, macroPlan, fmtWeeks, cycleInfo, PHASE_LABEL } from '../lib/calc'
 import { exportIcs } from '../lib/calendar'
 import type { ReminderCfg } from '../lib/reminders'
+import { compressImage } from '../lib/image'
+import TargetPhoto from '../components/TargetPhoto'
 
 const pad = (n: number): string => String(n).padStart(2, '0')
 
@@ -69,6 +71,17 @@ export default function ProfileView({ onUsersChanged }: { onUsersChanged: () => 
     await db.cycleLogs.add({ date: todayStr(), kind: 'start' })
   }
 
+  const changeTargetPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0]
+    e.target.value = ''
+    if (!f) return
+    await db.profile.update(1, { targetPhoto: await compressImage(f) })
+  }
+
+  const removeTargetPhoto = async () => {
+    await db.profile.update(1, { targetPhoto: undefined })
+  }
+
   const setRem = (patch: Partial<ReminderCfg>) => {
     const next: ReminderCfg = { enabled: rem?.enabled ?? false, hour: rem?.hour ?? 18, minute: rem?.minute ?? 0, ...patch }
     void db.settings.put({ key: 'reminder', value: next })
@@ -87,6 +100,14 @@ export default function ProfileView({ onUsersChanged }: { onUsersChanged: () => 
       <div className="card">
         <div className="kv"><b>Mục tiêu</b><span>{goalLabel}{profile.targetWeightKg ? ` — ${profile.targetWeightKg} kg` : ''}</span></div>
         <div className="kv"><b>Tới mục tiêu</b><span>{fmtWeeks(plan.weeksToTarget)}</span></div>
+        <div className="row" style={{ marginTop: 10 }}>
+          {profile.targetPhoto && <TargetPhoto blob={profile.targetPhoto} />}
+          <label className="btn ghost" style={{ width: 'auto', padding: '8px 12px', margin: 0, cursor: 'pointer' }}>
+            {profile.targetPhoto ? 'Đổi ảnh mục tiêu' : '+ Ảnh body mục tiêu'}
+            <input type="file" accept="image/*" style={{ display: 'none' }} onChange={changeTargetPhoto} />
+          </label>
+          {profile.targetPhoto && <MiniBtn onClick={removeTargetPhoto}>Bỏ ảnh</MiniBtn>}
+        </div>
         <div className="kv"><b>Giới tính / tuổi</b><span>{profile.sex === 'male' ? 'Nam' : 'Nữ'} · {profile.age}</span></div>
         <div className="kv"><b>Chiều cao / cân nặng</b><span className="ringnum">{profile.heightCm} cm · {profile.weightKg} kg</span></div>
         <div className="kv"><b>Vận động</b><span>{actLabel}</span></div>
