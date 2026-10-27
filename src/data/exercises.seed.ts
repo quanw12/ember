@@ -24,6 +24,22 @@ export const EQUIPMENT: { id: string; label: string }[] = [
   { id: 'other', label: 'Khác' }
 ]
 
+/** Nghỉ mặc định theo nhóm cơ (giây): compound lớn nghỉ dài, cơ nhỏ nghỉ ngắn. */
+export const REST_BY_MUSCLE: Record<string, number> = {
+  chest: 120,
+  back: 120,
+  quads: 120,
+  hamstrings: 120,
+  glutes: 120,
+  shoulders: 90,
+  biceps: 90,
+  triceps: 90,
+  core: 60,
+  calves: 60,
+  forearms: 60,
+  other: 90
+}
+
 /** Tăng lên khi sửa/thêm seed — App sẽ đồng bộ lại bảng exercises theo slug. */
 export const SEED_REV = 2
 

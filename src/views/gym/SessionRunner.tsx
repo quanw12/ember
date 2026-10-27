@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, todayStr, type SetEntry } from '../../db'
 import ExercisePicker from './ExercisePicker'
+import { REST_BY_MUSCLE } from '../../data/exercises.seed'
 
 interface Row {
   id?: number
@@ -49,6 +50,7 @@ export default function SessionRunner({ id, onDone }: { id: number; onDone: () =
   const [now, setNow] = useState(Date.now())
   const [restLeft, setRestLeft] = useState<number | null>(null)
   const [restSec, setRestSec] = useState(90)
+  const [restTuned, setRestTuned] = useState(false)
   const [summary, setSummary] = useState<null | { volume: number; setsDone: number; exercises: number; durationMin: number }>(null)
 
   const session = useLiveQuery(() => db.sessions.get(id))
@@ -143,7 +145,7 @@ export default function SessionRunner({ id, onDone }: { id: number; onDone: () =
         const newId = await db.sets.add(entry)
         updateRow(slug, idx, { id: newId, done: true })
       }
-      setRestLeft(restSec)
+      setRestLeft(restTuned ? restSec : restFor(slug))
     } else {
       if (row.id != null) await db.sets.update(row.id, { done: false })
       updateRow(slug, idx, { done: false })
@@ -155,6 +157,11 @@ export default function SessionRunner({ id, onDone }: { id: number; onDone: () =
     const order = slugs.filter(s => s !== slug)
     setSlugs(order)
     await saveOrder(order)
+  }
+
+  const restFor = (slug: string): number => {
+    const ex = exercises?.find(e => e.slug === slug)
+    return REST_BY_MUSCLE[ex?.muscle ?? 'other'] ?? 90
   }
 
   const finish = async () => {
@@ -262,7 +269,7 @@ export default function SessionRunner({ id, onDone }: { id: number; onDone: () =
               <span className="time">{fmtDuration(restLeft * 1000)}</span>
               <div className="btns">
                 {[60, 90, 120].map(sec => (
-                  <button key={sec} type="button" className={`chip ${restSec === sec ? 'on' : ''}`} onClick={() => { setRestSec(sec); setRestLeft(sec) }}>{sec}s</button>
+                  <button key={sec} type="button" className={`chip ${restSec === sec ? 'on' : ''}`} onClick={() => { setRestSec(sec); setRestLeft(sec); setRestTuned(true) }}>{sec}s</button>
                 ))}
                 <button type="button" className="chip" onClick={() => setRestLeft(v => (v ?? 0) + 15)}>+15s</button>
                 <button type="button" className="chip" onClick={() => setRestLeft(null)}>Bỏ qua</button>
