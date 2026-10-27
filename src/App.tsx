@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, todayStr, getActiveSlot, activateSlotDb, migrateLegacyIfNeeded } from './db'
 import { EXERCISE_SEED, SEED_REV } from './data/exercises.seed'
-import { ROUTINE_TEMPLATES, ROUTINES_SEED_REV } from './data/routines.seed'
 import { importLibrary, LIB_REV } from './data/library-import'
 import { tickReminder } from './lib/reminders'
 import { FlameIcon, DumbbellIcon, RouteIcon, TrendIcon, UserIcon } from './components/icons'
@@ -70,18 +69,6 @@ function AppShell({ onUsersChanged }: { onUsersChanged: () => void }) {
           }
         }
         await db.settings.put({ key: 'seedRev', value: SEED_REV })
-      }
-
-      const rSeedRow = await db.settings.get('routinesSeedRev')
-      const rSeed = (rSeedRow?.value as number | undefined) ?? 0
-      if (rSeed < ROUTINES_SEED_REV) {
-        const existingNames = new Set((await db.routines.toArray()).map(r => r.name))
-        for (const t of ROUTINE_TEMPLATES) {
-          if (!existingNames.has(t.name)) {
-            await db.routines.add({ name: t.name, source: 'template', days: t.days, createdAt: new Date() })
-          }
-        }
-        await db.settings.put({ key: 'routinesSeedRev', value: ROUTINES_SEED_REV })
       }
 
       const libRow = await db.settings.get('libRev')
