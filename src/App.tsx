@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, todayStr } from './db'
 import { EXERCISE_SEED, SEED_REV } from './data/exercises.seed'
-import { ROUTINE_TEMPLATES } from './data/routines.seed'
+import { ROUTINE_TEMPLATES, ROUTINES_SEED_REV } from './data/routines.seed'
+import { importLibrary, LIB_REV } from './data/library-import'
+import { tickReminder } from './lib/reminders'
 import { FlameIcon, DumbbellIcon, RouteIcon, TrendIcon, UserIcon } from './components/icons'
 import Onboarding from './views/Onboarding'
 import Today from './views/Today'
@@ -48,14 +50,31 @@ export default function App() {
       }
       await db.settings.put({ key: 'seedRev', value: SEED_REV })
 
-      const routinesSeeded = await db.settings.get('routinesSeeded')
-      if (!routinesSeeded) {
+      const rSeedRow = await db.settings.get('routinesSeedRev')
+      const rSeed = (rSeedRow?.value as number | undefined) ?? 0
+      if (rSeed < ROUTINES_SEED_REV) {
+        const existingNames = new Set((await db.routines.toArray()).map(r => r.name))
         for (const t of ROUTINE_TEMPLATES) {
-          await db.routines.add({ name: t.name, source: 'template', days: t.days, createdAt: new Date() })
+          if (!existingNames.has(t.name)) {
+            await db.routines.add({ name: t.name, source: 'template', days: t.days, createdAt: new Date() })
+          }
         }
-        await db.settings.put({ key: 'routinesSeeded', value: true })
+        await db.settings.put({ key: 'routinesSeedRev', value: ROUTINES_SEED_REV })
+      }
+
+      const libRow = await db.settings.get('libRev')
+      if ((libRow?.value as number | undefined) !== LIB_REV) {
+        try {
+          await importLibrary()
+          await db.settings.put({ key: 'libRev', value: LIB_REV })
+        } catch { /* offline lần đầu — sẽ thử lại ở lần mở sau */ }
       }
     })()
+  }, [])
+
+  useEffect(() => {
+    const t = setInterval(() => { void tickReminder() }, 30_000)
+    return () => clearInterval(t)
   }, [])
 
   if (profile === undefined) return null // Dexie đang nạp

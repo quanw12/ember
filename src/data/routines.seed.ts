@@ -11,7 +11,9 @@ export const jsDayToWeekday = (js: number): number => (js === 0 ? 7 : js)
 interface TemplateDay { weekday: number; slugs: string[] }
 interface Template { name: string; days: TemplateDay[] }
 
-/** Template dựng theo chuẩn phổ biến: StrongLifts/Starting Strength (full body), Upper/Lower cổ điển, PPL. */
+/** Template dựng theo chuẩn phổ biến: StrongLifts/Starting Strength (full body), Upper/Lower cổ điển, PPL, PHUL. */
+export const ROUTINES_SEED_REV = 2
+
 export const ROUTINE_TEMPLATES: Template[] = [
   {
     name: 'Full Body 3 buổi',
@@ -39,6 +41,15 @@ export const ROUTINE_TEMPLATES: Template[] = [
       { weekday: 5, slugs: ['bench-press', 'incline-db-press', 'seated-db-press', 'lateral-raise', 'triceps-pushdown'] },
       { weekday: 6, slugs: ['lat-pulldown', 'barbell-row', 'face-pull', 'barbell-curl', 'cable-curl'] },
       { weekday: 7, slugs: ['back-squat', 'rdl', 'leg-extension', 'leg-curl', 'standing-calf'] }
+    ]
+  },
+  {
+    name: 'PHUL 4 buổi (Power + Hypertrophy)',
+    days: [
+      { weekday: 2, slugs: ['bench-press', 'barbell-row', 'ohp', 'barbell-curl', 'skull-crusher'] },
+      { weekday: 3, slugs: ['back-squat', 'deadlift', 'leg-press', 'leg-curl', 'standing-calf'] },
+      { weekday: 5, slugs: ['incline-db-press', 'one-arm-row', 'lateral-raise', 'cable-curl', 'triceps-pushdown'] },
+      { weekday: 6, slugs: ['leg-press', 'walking-lunge', 'leg-curl', 'seated-calf', 'cable-crunch'] }
     ]
   }
 ]

@@ -15,6 +15,8 @@ export interface Profile {
   targetWeightKg?: number
   targetDate?: string
   kcalOverride?: number
+  /** Chế độ nữ: độ dài chu kỳ (mặc định 28). */
+  cycleLenDays?: number
   createdAt: Date
   updatedAt: Date
 }
@@ -30,6 +32,8 @@ export interface Exercise {
   steps?: string[]
   mistakes?: string
   pinnedVideoUrl?: string
+  images?: string[]
+  level?: string
   custom?: boolean
 }
 
@@ -107,6 +111,19 @@ export interface Routine {
   createdAt: Date
 }
 
+export interface Photo {
+  id?: number
+  date: string
+  blob: Blob
+}
+
+/** Ghi nhận chu kỳ: kind 'start' = ngày đầu kỳ kinh. */
+export interface CycleLog {
+  id?: number
+  date: string
+  kind: 'start'
+}
+
 class EmberDB extends Dexie {
   profile!: Table<Profile, number>
   exercises!: Table<Exercise, number>
@@ -118,6 +135,8 @@ class EmberDB extends Dexie {
   settings!: Table<SettingRow, string>
   runs!: Table<Run, number>
   routines!: Table<Routine, number>
+  photos!: Table<Photo, number>
+  cycleLogs!: Table<CycleLog, number>
 
   constructor() {
     super('ember')
@@ -136,6 +155,10 @@ class EmberDB extends Dexie {
     })
     this.version(3).stores({
       routines: '++id'
+    })
+    this.version(4).stores({
+      photos: '++id, date',
+      cycleLogs: '++id, date'
     })
   }
 }

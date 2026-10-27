@@ -11,7 +11,8 @@ export const MUSCLES: { id: string; label: string }[] = [
   { id: 'hamstrings', label: 'Gân kheo' },
   { id: 'glutes', label: 'Cơ mông' },
   { id: 'calves', label: 'Bắp chân' },
-  { id: 'forearms', label: 'Cẳng tay' }
+  { id: 'forearms', label: 'Cẳng tay' },
+  { id: 'other', label: 'Khác' }
 ]
 
 export const EQUIPMENT: { id: string; label: string }[] = [
@@ -19,7 +20,8 @@ export const EQUIPMENT: { id: string; label: string }[] = [
   { id: 'dumbbell', label: 'Tạ đơn' },
   { id: 'machine', label: 'Máy' },
   { id: 'cable', label: 'Cable' },
-  { id: 'bodyweight', label: 'Bodyweight' }
+  { id: 'bodyweight', label: 'Bodyweight' },
+  { id: 'other', label: 'Khác' }
 ]
 
 /** Tăng lên khi sửa/thêm seed — App sẽ đồng bộ lại bảng exercises theo slug. */
