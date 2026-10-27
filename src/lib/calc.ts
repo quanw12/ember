@@ -1,5 +1,12 @@
 import type { Profile } from '../db'
 
+export type Unit = 'kg' | 'lb'
+export const KG_PER_LB = 0.45359237
+
+/** Quy đổi hiển thị cân nặng (lưu nội bộ là kg). */
+export const toDisplayW = (kg: number, unit: Unit): number => (unit === 'lb' ? kg / KG_PER_LB : kg)
+export const fromDisplayW = (v: number, unit: Unit): number => (unit === 'lb' ? v * KG_PER_LB : v)
+
 export type Sex = Profile['sex']
 export type Goal = Profile['goal']
 

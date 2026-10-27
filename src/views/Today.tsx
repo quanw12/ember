@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, todayStr, movingAvg, getActiveSlot } from '../db'
-import { macroPlan, GOAL_OPTIONS } from '../lib/calc'
+import { macroPlan, GOAL_OPTIONS, toDisplayW, type Unit } from '../lib/calc'
 import { weekdayShort, jsDayToWeekday } from '../data/routines.seed'
 import { FlameIcon, DumbbellIcon } from '../components/icons'
 import TargetPhoto from '../components/TargetPhoto'
@@ -24,6 +24,8 @@ export default function Today({ onGoGym, onQuickStart }: { onGoGym: () => void; 
   const activeRow = useLiveQuery(() => db.settings.get('activeRoutineId'))
   const routines = useLiveQuery(() => db.routines.toArray())
   const exercises = useLiveQuery(() => db.exercises.toArray())
+  const unitRow = useLiveQuery(() => db.settings.get('unit'))
+  const unit = (unitRow?.value as Unit | undefined) ?? 'kg'
 
   const [kcal, setKcal] = useState('')
   const [protein, setProtein] = useState('')
@@ -112,9 +114,9 @@ export default function Today({ onGoGym, onQuickStart }: { onGoGym: () => void; 
           </text>
         </svg>
         <div style={{ flex: 1 }}>
-          <div className="card-title">Mục tiêu: {goalLabel}{target ? ` — ${target} kg` : ''}</div>
+          <div className="card-title">Mục tiêu: {goalLabel}{target ? ` — ${toDisplayW(target, unit).toFixed(1)} ${unit}` : ''}</div>
           <div className="meta ringnum">
-            Hiện tại ~{current.toFixed(1)} kg · bắt đầu {start} kg
+            Hiện tại ~{toDisplayW(current, unit).toFixed(1)} {unit} · bắt đầu {toDisplayW(start, unit).toFixed(1)} {unit}
             {plan.weeksToTarget != null ? ` · còn ~${plan.weeksToTarget} tuần` : ''}
           </div>
         </div>

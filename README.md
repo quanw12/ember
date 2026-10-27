@@ -14,6 +14,7 @@ A personal training PWA (gym + running + progress tracking), local-first, offlin
 - **Tiến trình**: cân nặng với trung bình trượt 7 ngày, ảnh progress so sánh 2 mốc, kcal vs mục tiêu, giấc ngủ, chế độ nữ theo chu kỳ
 - **Onboarding mục tiêu** (cut/bulk/maintain/recomp) tính kcal + macro từ Mifflin-St Jeor + ISSN
 - **Nhắc nhở tử tế**: 1 thông báo/ngày, im khi đã tập; xuất .ics vào Apple Calendar; hướng dẫn iOS Shortcuts
+- **Đa hồ sơ**: mỗi người một kho dữ liệu riêng hoàn toàn trên cùng máy — bạn bè dùng chung điện thoại vẫn tách biệt 100% (mục tiêu, kế hoạch, lịch tập, ảnh, backup riêng từng người)
 - **Local-first**: không tài khoản, không server, chạy offline, backup/restore JSON
 
 ## Chạy dự án

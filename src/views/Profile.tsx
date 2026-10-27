@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, todayStr, listSlots, getActiveSlot, setActiveSlot, activateSlotDb, createSlot, renameSlot, deleteSlot } from '../db'
-import { ACTIVITY_OPTIONS, GOAL_OPTIONS, macroPlan, fmtWeeks, cycleInfo, PHASE_LABEL } from '../lib/calc'
+import { ACTIVITY_OPTIONS, GOAL_OPTIONS, macroPlan, fmtWeeks, cycleInfo, PHASE_LABEL, toDisplayW, type Unit } from '../lib/calc'
 import { exportIcs } from '../lib/calendar'
 import type { ReminderCfg } from '../lib/reminders'
 import { compressImage } from '../lib/image'
@@ -25,6 +25,8 @@ export default function ProfileView({ onUsersChanged }: { onUsersChanged: () => 
   const rem = (remRow?.value ?? null) as ReminderCfg | null
   const notifPermission = typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'
   const [newUserName, setNewUserName] = useState('')
+  const unitRow = useLiveQuery(() => db.settings.get('unit'))
+  const unit = (unitRow?.value as Unit | undefined) ?? 'kg'
 
   if (!profile) return null
   const plan = macroPlan(profile)
@@ -82,6 +84,10 @@ export default function ProfileView({ onUsersChanged }: { onUsersChanged: () => 
     await db.profile.update(1, { targetPhoto: undefined })
   }
 
+  const setUnit = (u: Unit) => {
+    void db.settings.put({ key: 'unit', value: u })
+  }
+
   const setRem = (patch: Partial<ReminderCfg>) => {
     const next: ReminderCfg = { enabled: rem?.enabled ?? false, hour: rem?.hour ?? 18, minute: rem?.minute ?? 0, ...patch }
     void db.settings.put({ key: 'reminder', value: next })
@@ -108,8 +114,19 @@ export default function ProfileView({ onUsersChanged }: { onUsersChanged: () => 
           </label>
           {profile.targetPhoto && <MiniBtn onClick={removeTargetPhoto}>Bỏ ảnh</MiniBtn>}
         </div>
+        <div className="kv" style={{ marginTop: 8 }}><b>Đơn vị cân nặng</b>
+          <span style={{ display: 'flex', gap: 4 }}>
+            {(['kg', 'lb'] as Unit[]).map(u => (
+              <button key={u} type="button" onClick={() => setUnit(u)}
+                style={{ background: unit === u ? 'var(--red)' : 'none', color: unit === u ? '#fff' : 'var(--text-2)', border: '1px solid ' + (unit === u ? 'var(--red)' : 'var(--line-2)'), borderRadius: 8, padding: '4px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                {u}
+              </button>
+            ))}
+          </span>
+        </div>
+        <p className="note">Tạ trong buổi tập vẫn tính theo kg — đĩa tạ ở phòng gym VN chuẩn kg.</p>
         <div className="kv"><b>Giới tính / tuổi</b><span>{profile.sex === 'male' ? 'Nam' : 'Nữ'} · {profile.age}</span></div>
-        <div className="kv"><b>Chiều cao / cân nặng</b><span className="ringnum">{profile.heightCm} cm · {profile.weightKg} kg</span></div>
+        <div className="kv"><b>Chiều cao / cân nặng</b><span className="ringnum">{profile.heightCm} cm · {toDisplayW(profile.weightKg, unit).toFixed(1)} {unit}</span></div>
         <div className="kv"><b>Vận động</b><span>{actLabel}</span></div>
         <div className="kv"><b>Buổi tập/tuần</b><span className="ringnum">{profile.daysGym} gym · {profile.daysRun} chạy</span></div>
       </div>
