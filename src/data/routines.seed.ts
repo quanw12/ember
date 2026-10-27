@@ -1,4 +1,4 @@
-import type { RoutineDay } from '../db'
+import { db, type Profile, type RoutineDay } from '../db'
 
 export const WEEKDAYS = ['Thứ hai', 'Thứ ba', 'Thứ tư', 'Thứ năm', 'Thứ sáu', 'Thứ bảy', 'Chủ nhật']
 export const WEEKDAYS_SHORT = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
@@ -53,3 +53,34 @@ export const ROUTINE_TEMPLATES: Template[] = [
     ]
   }
 ]
+
+const ALLOWED_EQUIPMENT: Record<Profile['equipment'], string[]> = {
+  full: ['barbell', 'dumbbell', 'machine', 'cable', 'bodyweight', 'other'],
+  home: ['dumbbell', 'bodyweight', 'other'],
+  bodyweight: ['bodyweight']
+}
+
+/**
+ * Tạo template lần đầu cho hồ sơ — lọc bài theo dụng cụ người đó khai báo
+ * (chạy sau onboarding vì cần biết equipment; idempotent theo routinesSeedRev).
+ */
+export async function ensureTemplatesFor(equipment: Profile['equipment']): Promise<void> {
+  const rSeedRow = await db.settings.get('routinesSeedRev')
+  const rSeed = (rSeedRow?.value as number | undefined) ?? 0
+  if (rSeed >= ROUTINES_SEED_REV) return
+  const exercises = await db.exercises.toArray()
+  if (exercises.length === 0) return // thư viện chưa nạp xong — thử lại ở lần mở sau, đừng đốt cờ
+  const bySlug = new Map(exercises.map(e => [e.slug, e]))
+  const allowed = new Set(ALLOWED_EQUIPMENT[equipment] ?? ALLOWED_EQUIPMENT.full)
+  const existingNames = new Set((await db.routines.toArray()).map(r => r.name))
+  for (const t of ROUTINE_TEMPLATES) {
+    if (existingNames.has(t.name)) continue
+    const days: RoutineDay[] = t.days
+      .map(d => ({ weekday: d.weekday, slugs: d.slugs.filter(s => { const ex = bySlug.get(s); return ex != null && allowed.has(ex.equipment) }) }))
+      .filter(d => d.slugs.length > 0)
+    if (days.length > 0) {
+      await db.routines.add({ name: t.name, source: 'template', days, createdAt: new Date() })
+    }
+  }
+  await db.settings.put({ key: 'routinesSeedRev', value: ROUTINES_SEED_REV })
+}

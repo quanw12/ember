@@ -79,7 +79,7 @@ export default function PlansHome({ onStart, onEdit }: {
       </div>
 
       <p className="note">
-        Bấm vào tên kế hoạch để soạn từng ngày: thêm/bỏ bài, sắp thứ tự. Kế hoạch "ĐANG DÙNG" sẽ hiện buổi tương ứng ở tab Hôm nay.
+        Bấm vào tên kế hoạch để soạn từng ngày: thêm/bỏ bài, sắp thứ tự. Template được lọc theo dụng cụ bạn khai báo lúc onboarding. Kế hoạch "ĐANG DÙNG" sẽ hiện buổi tương ứng ở tab Hôm nay.
       </p>
     </>
   )

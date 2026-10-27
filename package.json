@@ -8,7 +8,8 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "icons": "node scripts/gen-icons.mjs"
+    "icons": "node scripts/gen-icons.mjs",
+    "test:smoke": "python scripts/with_server.py --server \"npm run dev\" --port 5173 -- python scripts/smoke_test.py"
   },
   "dependencies": {
     "@fontsource/be-vietnam-pro": "^5.1.0",

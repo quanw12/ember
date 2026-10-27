@@ -1,17 +1,32 @@
+import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db, todayStr } from '../db'
-import { ACTIVITY_OPTIONS, GOAL_OPTIONS, macroPlan, fmtWeeks, cycleInfo, PHASE_LABEL } from '../lib/calc'
+import { db, todayStr, listSlots, getActiveSlot, setActiveSlot, activateSlotDb, createSlot, renameSlot, deleteSlot } from '../db'
+import { ACTIVITY_OPTIONS, GOAL_OPTIONS, macroPlan, fmtWeeks, cycleInfo, PHASE_LABEL, toDisplayW, type Unit } from '../lib/calc'
 import { exportIcs } from '../lib/calendar'
 import type { ReminderCfg } from '../lib/reminders'
+import { compressImage } from '../lib/image'
+import TargetPhoto from '../components/TargetPhoto'
 
 const pad = (n: number): string => String(n).padStart(2, '0')
 
-export default function ProfileView() {
+function MiniBtn({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick}
+      style={{ background: 'none', border: '1px solid var(--line-2)', color: 'var(--text-2)', borderRadius: 8, padding: '4px 8px', fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+      {children}
+    </button>
+  )
+}
+
+export default function ProfileView({ onUsersChanged }: { onUsersChanged: () => void }) {
   const profile = useLiveQuery(() => db.profile.get(1))
   const cycleQ = useLiveQuery(() => db.cycleLogs.orderBy('date').reverse().toArray())
   const remRow = useLiveQuery(() => db.settings.get('reminder'))
   const rem = (remRow?.value ?? null) as ReminderCfg | null
   const notifPermission = typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'
+  const [newUserName, setNewUserName] = useState('')
+  const unitRow = useLiveQuery(() => db.settings.get('unit'))
+  const unit = (unitRow?.value as Unit | undefined) ?? 'kg'
 
   if (!profile) return null
   const plan = macroPlan(profile)
@@ -19,25 +34,58 @@ export default function ProfileView() {
   const goalLabel = GOAL_OPTIONS.find(g => g.id === profile.goal)?.label ?? profile.goal
 
   const exportJson = async () => {
+    const slot = getActiveSlot()
     const out: Record<string, unknown[]> = {}
     for (const t of db.tables) out[t.name] = await t.toArray()
     const blob = new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `ember-backup-${todayStr()}.json`
+    a.download = `ember-${(slot?.name ?? 'ho-so').toLowerCase().replace(/[^a-z0-9]+/gi, '-')}-${todayStr()}.json`
     a.click()
     URL.revokeObjectURL(url)
   }
 
   const wipe = async () => {
-    if (!window.confirm('Xoá TOÀN BỘ dữ liệu EMBER trên máy này? Hãy xuất backup trước nếu cần.')) return
-    await db.delete()
-    location.reload()
+    const slot = getActiveSlot()
+    if (!slot) return
+    if (!window.confirm(`Xoá TOÀN BỘ dữ liệu của "${slot.name}" trên máy này? Hãy xuất backup trước nếu cần.`)) return
+    await deleteSlot(slot.id)
+    onUsersChanged()
+  }
+
+  const switchTo = (id: string) => {
+    if (getActiveSlot()?.id === id) return
+    setActiveSlot(id)
+    activateSlotDb(id)
+    onUsersChanged()
+  }
+
+  const addUser = () => {
+    const n = newUserName.trim()
+    if (!n) return
+    createSlot(n)
+    setNewUserName('')
+    onUsersChanged()
   }
 
   const markCycleStart = async () => {
     await db.cycleLogs.add({ date: todayStr(), kind: 'start' })
+  }
+
+  const changeTargetPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0]
+    e.target.value = ''
+    if (!f) return
+    await db.profile.update(1, { targetPhoto: await compressImage(f) })
+  }
+
+  const removeTargetPhoto = async () => {
+    await db.profile.update(1, { targetPhoto: undefined })
+  }
+
+  const setUnit = (u: Unit) => {
+    void db.settings.put({ key: 'unit', value: u })
   }
 
   const setRem = (patch: Partial<ReminderCfg>) => {
@@ -58,8 +106,27 @@ export default function ProfileView() {
       <div className="card">
         <div className="kv"><b>Mục tiêu</b><span>{goalLabel}{profile.targetWeightKg ? ` — ${profile.targetWeightKg} kg` : ''}</span></div>
         <div className="kv"><b>Tới mục tiêu</b><span>{fmtWeeks(plan.weeksToTarget)}</span></div>
+        <div className="row" style={{ marginTop: 10 }}>
+          {profile.targetPhoto && <TargetPhoto blob={profile.targetPhoto} />}
+          <label className="btn ghost" style={{ width: 'auto', padding: '8px 12px', margin: 0, cursor: 'pointer' }}>
+            {profile.targetPhoto ? 'Đổi ảnh mục tiêu' : '+ Ảnh body mục tiêu'}
+            <input type="file" accept="image/*" style={{ display: 'none' }} onChange={changeTargetPhoto} />
+          </label>
+          {profile.targetPhoto && <MiniBtn onClick={removeTargetPhoto}>Bỏ ảnh</MiniBtn>}
+        </div>
+        <div className="kv" style={{ marginTop: 8 }}><b>Đơn vị cân nặng</b>
+          <span style={{ display: 'flex', gap: 4 }}>
+            {(['kg', 'lb'] as Unit[]).map(u => (
+              <button key={u} type="button" onClick={() => setUnit(u)}
+                style={{ background: unit === u ? 'var(--red)' : 'none', color: unit === u ? '#fff' : 'var(--text-2)', border: '1px solid ' + (unit === u ? 'var(--red)' : 'var(--line-2)'), borderRadius: 8, padding: '4px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                {u}
+              </button>
+            ))}
+          </span>
+        </div>
+        <p className="note">Tạ trong buổi tập vẫn tính theo kg — đĩa tạ ở phòng gym VN chuẩn kg.</p>
         <div className="kv"><b>Giới tính / tuổi</b><span>{profile.sex === 'male' ? 'Nam' : 'Nữ'} · {profile.age}</span></div>
-        <div className="kv"><b>Chiều cao / cân nặng</b><span className="ringnum">{profile.heightCm} cm · {profile.weightKg} kg</span></div>
+        <div className="kv"><b>Chiều cao / cân nặng</b><span className="ringnum">{profile.heightCm} cm · {toDisplayW(profile.weightKg, unit).toFixed(1)} {unit}</span></div>
         <div className="kv"><b>Vận động</b><span>{actLabel}</span></div>
         <div className="kv"><b>Buổi tập/tuần</b><span className="ringnum">{profile.daysGym} gym · {profile.daysRun} chạy</span></div>
       </div>
@@ -116,6 +183,35 @@ export default function ProfileView() {
         <p className="note">
           iOS PWA không gửi thông báo khi app đóng — để nhắc đúng giờ tuyệt đối: mở file .ics và thêm vào Apple Calendar, hoặc dùng app <b>Shortcuts</b> tạo Automation "Time of Day" mở EMBER tại giờ đã hẹn. Khi app đang mở, EMBER tự thông báo đúng giờ hẹn.
         </p>
+      </div>
+
+      <div className="card">
+        <div className="eyebrow">NGƯỜI DÙNG TRÊN MÁY NÀY</div>
+        {(() => {
+          const slots = listSlots()
+          const active = getActiveSlot()
+          return (
+            <>
+              {slots.map(s => (
+                <div className="kv" key={s.id}>
+                  <b>{s.name}{s.id === active?.id ? ' — đang dùng' : ''}</b>
+                  <span style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                    {s.id !== active?.id && <MiniBtn onClick={() => switchTo(s.id)}>Chuyển</MiniBtn>}
+                    <MiniBtn onClick={() => { const n = window.prompt('Đổi tên hồ sơ:', s.name); if (n?.trim()) { renameSlot(s.id, n.trim()); onUsersChanged() } }}>Đổi tên</MiniBtn>
+                    <MiniBtn onClick={async () => { if (window.confirm(`Xoá hồ sơ "${s.name}" và TOÀN BỘ dữ liệu của người này?`)) { await deleteSlot(s.id); onUsersChanged() } }}>Xoá</MiniBtn>
+                  </span>
+                </div>
+              ))}
+              <div className="row" style={{ marginTop: 10 }}>
+                <input type="text" placeholder="Tên người mới" value={newUserName} onChange={e => setNewUserName(e.target.value)} style={{ flex: 1 }} />
+                <button className="btn ghost" style={{ width: 'auto', padding: '10px 14px', margin: 0 }} disabled={!newUserName.trim()} onClick={addUser}>Thêm</button>
+              </div>
+              <p className="note">
+                Mỗi hồ sơ là một kho dữ liệu riêng hoàn toàn trên máy này: mục tiêu, kế hoạch, lịch tập, ảnh, backup — tách biệt 100%. Thông báo nhắc chạy cho hồ sơ đang mở.
+              </p>
+            </>
+          )
+        })()}
       </div>
 
       <div className="card">

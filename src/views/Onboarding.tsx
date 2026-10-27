@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import { db, type Profile } from '../db'
 import { ACTIVITY_OPTIONS, GOAL_OPTIONS, macroPlan, fmtWeeks } from '../lib/calc'
+import { ensureTemplatesFor } from '../data/routines.seed'
+import { compressImage } from '../lib/image'
+import TargetPhoto from '../components/TargetPhoto'
 
 type Draft = Pick<Profile, 'sex' | 'age' | 'heightCm' | 'weightKg' | 'activity' | 'expLevel' | 'daysGym' | 'daysRun' | 'equipment' | 'goal' | 'targetWeightKg'>
 
@@ -26,7 +29,15 @@ const num = (v: string): number | undefined => {
 export default function Onboarding() {
   const [step, setStep] = useState(0)
   const [d, setD] = useState<Draft>(INITIAL)
+  const [targetPhoto, setTargetPhoto] = useState<Blob | null>(null)
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setD(p => ({ ...p, [k]: v }))
+
+  const pickPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0]
+    e.target.value = ''
+    if (!f) return
+    setTargetPhoto(await compressImage(f))
+  }
 
   const valid =
     d.age >= 13 && d.age <= 90 &&
@@ -37,8 +48,9 @@ export default function Onboarding() {
   const plan = macroPlan(d)
 
   const save = async () => {
-    await db.profile.put({ ...d, id: 1, createdAt: new Date(), updatedAt: new Date() })
+    await db.profile.put({ ...d, id: 1, targetPhoto: targetPhoto ?? undefined, createdAt: new Date(), updatedAt: new Date() })
     await db.bodyLogs.add({ date: new Date().toISOString().slice(0, 10), weightKg: d.weightKg })
+    await ensureTemplatesFor(d.equipment)
   }
 
   return (
@@ -112,6 +124,19 @@ export default function Onboarding() {
             </div>
             <label className="f" htmlFor="tw">Cân nặng mục tiêu (kg) — tùy chọn</label>
             <input id="tw" type="number" inputMode="decimal" step="0.1" placeholder="Ví dụ 60" value={d.targetWeightKg ?? ''} onChange={e => set('targetWeightKg', num(e.target.value))} />
+            <label className="f" htmlFor="tp">Ảnh "body mong muốn" — tùy chọn</label>
+            {targetPhoto && (
+              <div className="row" style={{ marginTop: 6 }}>
+                <TargetPhoto blob={targetPhoto} />
+                <button type="button" className="btn ghost" style={{ width: 'auto', padding: '8px 12px', margin: 0 }} onClick={() => setTargetPhoto(null)}>Bỏ ảnh</button>
+              </div>
+            )}
+            {!targetPhoto && (
+              <label className="btn ghost" style={{ marginTop: 6, textAlign: 'center', cursor: 'pointer' }}>
+                + Chụp / chọn ảnh
+                <input id="tp" type="file" accept="image/*" style={{ display: 'none' }} onChange={pickPhoto} />
+              </label>
+            )}
             <div className="note">Đổi được sau trong Hồ sơ, kể cả đổi chế độ giữa chừng.</div>
           </div>
           <div className="spacer" />

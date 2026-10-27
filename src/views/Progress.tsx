@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, todayStr, movingAvg, type Photo } from '../db'
-import { macroPlan, GOAL_OPTIONS, fmtWeeks, cycleInfo, PHASE_LABEL } from '../lib/calc'
+import { macroPlan, GOAL_OPTIONS, fmtWeeks, cycleInfo, PHASE_LABEL, toDisplayW, fromDisplayW, type Unit } from '../lib/calc'
 import { compressImage } from '../lib/image'
 
 function PhotosCard() {
@@ -148,6 +148,8 @@ export default function Progress() {
   const kcalQ = useLiveQuery(() => db.nutritionLogs.orderBy('date').toArray())
   const sleepQ = useLiveQuery(() => db.sleepLogs.orderBy('date').toArray())
   const cycleQ = useLiveQuery(() => db.cycleLogs.orderBy('date').reverse().toArray())
+  const unitRow = useLiveQuery(() => db.settings.get('unit'))
+  const unit = (unitRow?.value as Unit | undefined) ?? 'kg'
   const [weight, setWeight] = useState('')
   const [belly, setBelly] = useState('')
   const [saved, setSaved] = useState(false)
@@ -182,15 +184,16 @@ export default function Progress() {
   const saveLog = async () => {
     const w = Number(weight), b = Number(belly)
     if (!(w > 0 || b > 0)) return
+    const kg = fromDisplayW(w, unit)
     if (todayLog?.id != null) {
       await db.bodyLogs.update(todayLog.id, {
-        weightKg: weight ? w : todayLog.weightKg,
+        weightKg: weight ? kg : todayLog.weightKg,
         bellyCm: belly ? b : todayLog.bellyCm
       })
     } else {
       await db.bodyLogs.add({
         date: today,
-        weightKg: weight ? w : undefined,
+        weightKg: weight ? kg : undefined,
         bellyCm: belly ? b : undefined
       })
     }
@@ -210,7 +213,7 @@ export default function Progress() {
         <div className="grid2" style={{ marginTop: 4 }}>
           <div>
             <label className="f" htmlFor="pw">Cân nặng (kg)</label>
-            <input id="pw" type="number" inputMode="decimal" step="0.1" placeholder={trend ? trend.toFixed(1) : '60'} value={weight} onChange={e => setWeight(e.target.value)} />
+            <input id="pw" type="number" inputMode="decimal" step="0.1" placeholder={trend ? toDisplayW(trend, unit).toFixed(1) : '60'} value={weight} onChange={e => setWeight(e.target.value)} />
           </div>
           <div>
             <label className="f" htmlFor="pb">Vòng bụng (cm)</label>
@@ -224,9 +227,9 @@ export default function Progress() {
         <div className="eyebrow">CÂN NẶNG — 30 LẦN GẦN NHẤT</div>
         <div className="kv" style={{ borderTop: 'none' }}>
           <b>Trung bình trượt 7 ngày</b>
-          <span className="ringnum">{trend != null ? `${trend.toFixed(1)} kg` : '—'}</span>
+          <span className="ringnum">{trend != null ? `${toDisplayW(trend, unit).toFixed(1)} ${unit}` : '—'}</span>
         </div>
-        <WeightChart weights={weightsChart} />
+        <WeightChart weights={weightsChart.map(w => ({ date: w.date, kg: toDisplayW(w.kg, unit) }))} />
         {weightsChart.length < 2 && <div className="meta" style={{ marginTop: 8 }}>Cần ít nhất 2 lần ghi để vẽ biểu đồ — cân mỗi ngày cho đường mượt.</div>}
         <p className="note">Điểm nhỏ mờ là số cân thô (hay dao động do nước); đường đậm là trung bình trượt 7 ngày — hãy đánh giá theo đường đậm.</p>
       </div>

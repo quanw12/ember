@@ -1,16 +1,15 @@
 import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db, todayStr, movingAvg } from '../db'
-import { macroPlan, GOAL_OPTIONS } from '../lib/calc'
+import { db, todayStr, movingAvg, getActiveSlot } from '../db'
+import { macroPlan, GOAL_OPTIONS, toDisplayW, type Unit } from '../lib/calc'
 import { weekdayShort, jsDayToWeekday } from '../data/routines.seed'
 import { FlameIcon, DumbbellIcon } from '../components/icons'
+import TargetPhoto from '../components/TargetPhoto'
 
-function greeting(): string {
+function greeting(name?: string): string {
   const h = new Date().getHours()
-  if (h < 11) return 'Chào buổi sáng.'
-  if (h < 14) return 'Buổi trưa rồi.'
-  if (h < 18) return 'Chiều rồi.'
-  return 'Buổi tối rồi.'
+  const base = h < 11 ? 'Chào buổi sáng' : h < 14 ? 'Buổi trưa rồi' : h < 18 ? 'Chiều rồi' : 'Buổi tối rồi'
+  return name ? `${base}, ${name}.` : `${base}.`
 }
 
 const DAYS = ['Chủ nhật', 'Thứ hai', 'Thứ ba', 'Thứ tư', 'Thứ năm', 'Thứ sáu', 'Thứ bảy']
@@ -25,6 +24,8 @@ export default function Today({ onGoGym, onQuickStart }: { onGoGym: () => void; 
   const activeRow = useLiveQuery(() => db.settings.get('activeRoutineId'))
   const routines = useLiveQuery(() => db.routines.toArray())
   const exercises = useLiveQuery(() => db.exercises.toArray())
+  const unitRow = useLiveQuery(() => db.settings.get('unit'))
+  const unit = (unitRow?.value as Unit | undefined) ?? 'kg'
 
   const [kcal, setKcal] = useState('')
   const [protein, setProtein] = useState('')
@@ -95,7 +96,7 @@ export default function Today({ onGoGym, onQuickStart }: { onGoGym: () => void; 
     <>
       <div style={{ paddingTop: 22 }}>
         <div className="eyebrow">{DAYS[new Date().getDay()]} · {new Date().toLocaleDateString('vi-VN')}</div>
-        <h1 className="h">{greeting()}</h1>
+        <h1 className="h">{greeting(getActiveSlot()?.name)}</h1>
         <div style={{ marginTop: 10 }}>
           <span className="streak"><FlameIcon /> {streak > 0 ? `${streak} ngày giữ lửa` : 'Bắt đầu lửa hôm nay'}</span>
         </div>
@@ -112,13 +113,14 @@ export default function Today({ onGoGym, onQuickStart }: { onGoGym: () => void; 
             {pct != null ? `${pct}%` : '—'}
           </text>
         </svg>
-        <div>
-          <div className="card-title">Mục tiêu: {goalLabel}{target ? ` — ${target} kg` : ''}</div>
+        <div style={{ flex: 1 }}>
+          <div className="card-title">Mục tiêu: {goalLabel}{target ? ` — ${toDisplayW(target, unit).toFixed(1)} ${unit}` : ''}</div>
           <div className="meta ringnum">
-            Hiện tại ~{current.toFixed(1)} kg · bắt đầu {start} kg
+            Hiện tại ~{toDisplayW(current, unit).toFixed(1)} {unit} · bắt đầu {toDisplayW(start, unit).toFixed(1)} {unit}
             {plan.weeksToTarget != null ? ` · còn ~${plan.weeksToTarget} tuần` : ''}
           </div>
         </div>
+        {profile.targetPhoto && <TargetPhoto blob={profile.targetPhoto} />}
       </div>
 
       {planSlugs.length > 0 && activeRoutine ? (
