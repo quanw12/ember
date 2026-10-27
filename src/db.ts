@@ -1,7 +1,8 @@
 import Dexie, { type Table } from 'dexie'
 
 export interface Profile {
-  id: number // luôn là 1 — hồ sơ duy nhất
+  id: number // luôn là 1 — mỗi hồ sơ người dùng là một DB riêng
+  name?: string
   sex: 'male' | 'female'
   age: number
   heightCm: number
@@ -17,6 +18,8 @@ export interface Profile {
   kcalOverride?: number
   /** Chế độ nữ: độ dài chu kỳ (mặc định 28). */
   cycleLenDays?: number
+  /** Ảnh "body mong muốn" — lưu Blob cục bộ. */
+  targetPhoto?: Blob
   createdAt: Date
   updatedAt: Date
 }
@@ -138,8 +141,8 @@ class EmberDB extends Dexie {
   photos!: Table<Photo, number>
   cycleLogs!: Table<CycleLog, number>
 
-  constructor() {
-    super('ember')
+  constructor(name: string) {
+    super(name)
     this.version(1).stores({
       profile: 'id',
       exercises: 'id, slug, muscle, equipment',
@@ -163,7 +166,114 @@ class EmberDB extends Dexie {
   }
 }
 
-export const db = new EmberDB()
+/* ------------------------------------------------------------------ */
+/* Đa hồ sơ: mỗi người dùng một DB IndexedDB riêng (ember-<slotId>) —  */
+/* dữ liệu, kế hoạch, backup tách biệt hoàn toàn trên cùng một máy.    */
+/* ------------------------------------------------------------------ */
+
+export interface SlotMeta {
+  id: string
+  name: string
+  createdAt: string
+}
+
+const SLOTS_KEY = 'emberSlots'
+const ACTIVE_KEY = 'emberActive'
+
+function readSlots(): SlotMeta[] {
+  try {
+    return JSON.parse(localStorage.getItem(SLOTS_KEY) ?? '[]') as SlotMeta[]
+  } catch {
+    return []
+  }
+}
+
+function writeSlots(slots: SlotMeta[]): void {
+  localStorage.setItem(SLOTS_KEY, JSON.stringify(slots))
+}
+
+export function listSlots(): SlotMeta[] {
+  return readSlots()
+}
+
+export function getActiveSlot(): SlotMeta | null {
+  const slots = readSlots()
+  const id = localStorage.getItem(ACTIVE_KEY)
+  return slots.find(s => s.id === id) ?? slots[0] ?? null
+}
+
+export function setActiveSlot(id: string): void {
+  localStorage.setItem(ACTIVE_KEY, id)
+}
+
+let active: EmberDB = new EmberDB('ember-default')
+
+/** Trỏ `db` sang DB của một hồ sơ. Gọi trước khi render dùng db. */
+export function activateSlotDb(id: string): void {
+  active = new EmberDB(`ember-${id}`)
+}
+
+export function createSlot(name: string): SlotMeta {
+  const meta: SlotMeta = { id: 'p' + Date.now().toString(36), name, createdAt: new Date().toISOString() }
+  const slots = readSlots()
+  slots.push(meta)
+  writeSlots(slots)
+  setActiveSlot(meta.id)
+  activateSlotDb(meta.id)
+  return meta
+}
+
+export function renameSlot(id: string, name: string): void {
+  const slots = readSlots()
+  const meta = slots.find(s => s.id === id)
+  if (meta) {
+    meta.name = name
+    writeSlots(slots)
+  }
+}
+
+export async function deleteSlot(id: string): Promise<void> {
+  const slots = readSlots().filter(s => s.id !== id)
+  writeSlots(slots)
+  await new EmberDB(`ember-${id}`).delete()
+  if (getActiveSlot()?.id === id) {
+    localStorage.removeItem(ACTIVE_KEY)
+    const next = slots[0]
+    if (next) {
+      setActiveSlot(next.id)
+      activateSlotDb(next.id)
+    }
+  }
+}
+
+/** Bản cài cũ (trước đa hồ sơ) chứa dữ liệu trong DB tên 'ember' — dồn vào hồ sơ đầu tiên. */
+export async function migrateLegacyIfNeeded(): Promise<void> {
+  if (readSlots().length > 0) return
+  if (!('databases' in indexedDB)) return
+  const dbs = await indexedDB.databases()
+  if (!dbs.some(d => d.name === 'ember')) return
+
+  const meta = createSlot('Của tôi')
+  const legacy = new EmberDB('ember')
+  await legacy.open()
+  try {
+    for (const table of legacy.tables) {
+      const rows = await table.toArray()
+      if (rows.length > 0) await active.table(table.name).bulkPut(rows)
+    }
+  } finally {
+    legacy.close()
+  }
+  void meta
+}
+
+/** Proxy: mọi `db.xxx` trong app đều trỏ tới DB của hồ sơ đang mở. */
+export const db = new Proxy({} as EmberDB, {
+  get(_target, prop) {
+    const value = Reflect.get(active as unknown as object, prop, active)
+    return typeof value === 'function' ? (value as (...args: unknown[]) => unknown).bind(active) : value
+  }
+}) as EmberDB
 
 export const todayStr = (): string => new Date().toISOString().slice(0, 10)
 
