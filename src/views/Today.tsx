@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, todayStr, movingAvg, getActiveSlot } from '../db'
-import { macroPlan, GOAL_OPTIONS, toDisplayW, type Unit } from '../lib/calc'
-import { weekdayShort, jsDayToWeekday } from '../data/routines.seed'
-import { FlameIcon, DumbbellIcon } from '../components/icons'
+import { macroPlan, GOAL_OPTIONS, toDisplayW, cycleInfo, PHASE_LABEL, type Unit } from '../lib/calc'
+import { streakOf, workoutDates } from '../lib/gym'
+import { FlameIcon } from '../components/icons'
 import TargetPhoto from '../components/TargetPhoto'
+import TodayPlanCard from '../components/TodayPlanCard'
 
 function greeting(name?: string): string {
   const h = new Date().getHours()
@@ -21,9 +22,8 @@ export default function Today({ onGoGym, onQuickStart }: { onGoGym: () => void; 
   const todayNutrition = useLiveQuery(() => db.nutritionLogs.where('date').equals(today).first())
   const todaySleep = useLiveQuery(() => db.sleepLogs.where('date').equals(today).first())
   const sessions = useLiveQuery(() => db.sessions.toArray())
-  const activeRow = useLiveQuery(() => db.settings.get('activeRoutineId'))
-  const routines = useLiveQuery(() => db.routines.toArray())
-  const exercises = useLiveQuery(() => db.exercises.toArray())
+  const runs = useLiveQuery(() => db.runs.toArray())
+  const cycleQ = useLiveQuery(() => db.cycleLogs.orderBy('date').reverse().toArray())
   const unitRow = useLiveQuery(() => db.settings.get('unit'))
   const unit = (unitRow?.value as Unit | undefined) ?? 'kg'
 
@@ -57,22 +57,11 @@ export default function Today({ onGoGym, onQuickStart }: { onGoGym: () => void; 
     }
   }
 
-  // Streak: số ngày liên tục có buổi tập, đếm từ hôm nay/lùi về sau
-  const sessionDates = new Set((sessions ?? []).map(s => s.date))
-  let streak = 0
-  const cursor = new Date()
-  while (sessionDates.has(cursor.toISOString().slice(0, 10))) {
-    streak++
-    cursor.setDate(cursor.getDate() - 1)
-  }
+  // Streak: ngày có buổi tập hoàn thành (gym kết thúc hoặc có buổi chạy)
+  const workedOut = workoutDates(sessions, runs)
+  const streak = streakOf(workedOut, today)
 
   const goalLabel = GOAL_OPTIONS.find(g => g.id === profile.goal)?.label ?? profile.goal
-
-  const activeRoutine = routines?.find(r => r.id === (activeRow?.value as number | undefined))
-  const weekday = jsDayToWeekday(new Date().getDay())
-  const todayPlanDay = activeRoutine?.days.find(d => d.weekday === weekday)
-  const planSlugs = todayPlanDay?.slugs ?? []
-  const nameOf = (slug: string): string => exercises?.find(e => e.slug === slug)?.name ?? slug
 
   const saveQuickLog = async () => {
     const k = Number(kcal), p = Number(protein), s = Number(sleep)
@@ -123,29 +112,20 @@ export default function Today({ onGoGym, onQuickStart }: { onGoGym: () => void; 
         {profile.targetPhoto && <TargetPhoto blob={profile.targetPhoto} />}
       </div>
 
-      {planSlugs.length > 0 && activeRoutine ? (
-        <div className="card">
-          <div className="eyebrow">GYM · {weekdayShort(weekday).toUpperCase()} · {activeRoutine.name.toUpperCase()}</div>
-          <h2 className="h" style={{ marginTop: 4 }}>Hôm nay: {planSlugs.length} bài</h2>
-          <div className="meta">{planSlugs.map(nameOf).join(' · ')}</div>
-          <button className="btn" style={{ marginTop: 12 }} onClick={() => onQuickStart(planSlugs, `${activeRoutine.name} · ${weekdayShort(weekday)}`)}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
-              <DumbbellIcon /> BẮT ĐẦU TẬP
-            </span>
-          </button>
-        </div>
-      ) : (
-        <div className="card">
-          <div className="eyebrow">GYM · HÔM NAY</div>
-          <h2 className="h" style={{ marginTop: 4 }}>Buổi tập đang trên đường về.</h2>
-          <div className="meta">Chọn kế hoạch ở tab Gym để Hôm nay tự chỉ bài — hoặc tập tự do ngay.</div>
-          <button className="btn" style={{ marginTop: 12 }} onClick={onGoGym}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
-              <DumbbellIcon /> BẮT ĐẦU TẬP
-            </span>
-          </button>
-        </div>
-      )}
+      <TodayPlanCard onStart={onQuickStart} onGoPlans={onGoGym} />
+
+      {profile.sex === 'female' && cycleQ && (() => {
+        const lastStart = cycleQ.find(c => c.kind === 'start')?.date
+        if (!lastStart) return null
+        const ci = cycleInfo(lastStart, profile.cycleLenDays ?? 28)
+        return (
+          <div className="card">
+            <div className="eyebrow">CHU KỲ · {PHASE_LABEL[ci.phase].toUpperCase()}</div>
+            <h2 className="h" style={{ marginTop: 4 }}>Ngày {ci.day} chu kỳ</h2>
+            <div className="meta">{ci.tip}</div>
+          </div>
+        )
+      })()}
 
       <div className="card">
         <div className="eyebrow">NHẬT KÝ NHANH · 10 GIÂY</div>

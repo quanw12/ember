@@ -45,3 +45,12 @@ export function UserIcon({ className }: IconProps) {
     </svg>
   )
 }
+
+export function ChatIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} {...S} aria-hidden="true">
+      <path d="M4 6.5 h16 v10 h-9 l-4.5 3.8 V16.5 H4 Z" />
+      <path d="M8 10 h8" /><path d="M8 13 h5" />
+    </svg>
+  )
+}

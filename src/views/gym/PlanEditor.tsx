@@ -14,7 +14,10 @@ export default function PlanEditor({ id, onBack }: { id: number; onBack: () => v
 
   if (!routine) return null
   const r = routine
-  const nameOf = (slug: string): string => exercises?.find(e => e.slug === slug)?.name ?? slug
+  const nameOf = (slug: string): string => {
+    const e = exercises?.find(x => x.slug === slug)
+    return e ? (e.nameEn || e.name) : slug
+  }
 
   const setDays = async (days: RoutineDay[]) => { await db.routines.update(id, { days }) }
   const saveName = async () => {

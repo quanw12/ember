@@ -50,7 +50,7 @@ export default function Onboarding() {
   const save = async () => {
     await db.profile.put({ ...d, id: 1, targetPhoto: targetPhoto ?? undefined, createdAt: new Date(), updatedAt: new Date() })
     await db.bodyLogs.add({ date: new Date().toISOString().slice(0, 10), weightKg: d.weightKg })
-    await ensureTemplatesFor(d.equipment)
+    await ensureTemplatesFor(d.equipment, d.sex)
   }
 
   return (
@@ -67,7 +67,7 @@ export default function Onboarding() {
                 <b>Nam</b><span>Công thức calo nam</span>
               </button>
               <button type="button" className={`optcard ${d.sex === 'female' ? 'on' : ''}`} onClick={() => set('sex', 'female')}>
-                <b>Nữ</b><span>Công thức riêng + chế độ theo chu kỳ (sắp có)</span>
+                <b>Nữ</b><span>Theo chu kỳ · template mông/chân riêng</span>
               </button>
             </div>
             <label className="f" htmlFor="age">Tuổi</label>

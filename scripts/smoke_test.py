@@ -100,6 +100,21 @@ with sync_playwright() as p:
     expect_text(page, 'Full Body 3 buổi', 'Gym: template Full Body có sẵn')
     expect_text(page, 'PPL 6 buổi', 'Gym: template PPL có sẵn')
 
+    # 8) Bấm đủ các tab còn lại — trước đây tab Chạy sập vì orderBy cột không index
+    page.click('button:has-text("Chạy")')
+    page.wait_for_timeout(800)
+    expect_text(page, 'BẮT ĐẦU CHẠY', 'Tab Chạy: không sập, thấy nút bắt đầu')
+    expect_text(page, 'KẾ HOẠCH NHS C25K', 'Tab Chạy: kế hoạch C25K')
+    page.click('button:has-text("Tiến trình")')
+    page.wait_for_timeout(600)
+    expect_text(page, 'ẢNH PROGRESS', 'Tab Tiến trình: card ảnh progress')
+    page.click('button:has-text("Hồ sơ")')
+    page.wait_for_timeout(600)
+    expect_text(page, 'NGƯỜI DÙNG TRÊN MÁY NÀY', 'Tab Hồ sơ: card đa hồ sơ')
+    page.click('button:has-text("Hôm nay")')
+    page.wait_for_timeout(600)
+    expect_text(page, 'Quân', 'Quay lại Hôm nay vẫn ổn')
+
     browser.close()
 
 print('\n=== KẾT QUẢ ===')
