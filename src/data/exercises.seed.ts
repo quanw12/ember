@@ -41,7 +41,7 @@ export const REST_BY_MUSCLE: Record<string, number> = {
 }
 
 /** Tăng lên khi sửa/thêm seed — App sẽ đồng bộ lại bảng exercises theo slug. */
-export const SEED_REV = 2
+export const SEED_REV = 3
 
 const ex = (
   slug: string, name: string, nameEn: string, muscle: string, equipment: string,
@@ -149,6 +149,15 @@ export const EXERCISE_SEED: Exercise[] = [
   ex('bulgarian-split', 'Bulgarian Split Squat', 'Bulgarian Split Squat', 'glutes', 'dumbbell',
     ['Mặt sau chân tựa ghế, chân trước bước xa', 'Hạ thẳng người xuống, gối sau gần sàn', 'Đẩy đứng lên bằng chân trước'],
     'Ngả thân quá nhiều làm mất thăng bằng.'),
+  ex('cable-kickback', 'Đá sau cáp (kickback mông)', 'Cable Glute Kickback', 'glutes', 'cable',
+    ['Dây cáp gắn vào cổ chân, đứng bám bệ để giữ thăng bằng', 'Đá chân ra sau và lên, siết mông ở đỉnh', 'Hạ chậm, giữ thân không ngả'],
+    'Vung chân bằng đà thay vì siết mông — giảm tải và siết chậm.'),
+  ex('hip-abduction', 'Xoay đùi ngoài máy (hip abduction)', 'Hip Abduction', 'glutes', 'machine',
+    ['Ngồi máy, đệm đè phía ngoài hai đùi', 'Đẩy hai chân ra ngoài tới hết tầm, giữ 1 giây', 'Nhả chậm, không thả đà'],
+    'Ngả người ra sau quá nhiều — ngồi thẳng, mông áp ghế.'),
+  ex('db-step-up', 'Bước lên bục tạ đơn', 'Dumbbell Step-up', 'glutes', 'dumbbell',
+    ['Cầm tạ hai bên người, bước một chân lên bục ngang gối', 'Đẩy qua gối trước để đứng lên bục', 'Bước xuống chậm, đổi chân sau mỗi hiệp'],
+    'Đẩy bằng chân sau dồn lên — hãy để chân trước làm hết việc.'),
   ex('standing-calf', 'Nhón gót đứng máy', 'Standing Calf Raise', 'calves', 'machine',
     ['Mũi chân trên bệ, gót thấp nhất có thể', 'Nhón gót lên cao nhất, siết 1 giây', 'Hạ xuống căng đầy'],
     'Nhún nhảy bằng đà gối thay vì cơ bắp chân.'),

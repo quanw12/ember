@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db, type Session } from '../../db'
 import { MUSCLES, EQUIPMENT } from '../../data/exercises.seed'
 import { todayStr } from '../../db'
+import { exNames } from '../../lib/gym'
 
 const eqLabel = (id: string): string => EQUIPMENT.find(e => e.id === id)?.label ?? id
 
@@ -28,7 +29,7 @@ export default function Library({ onOpen, onStart, onResume }: {
       .filter(e => (muscle ? e.muscle === muscle : true))
       .filter(e => (equip ? e.equipment === equip : true))
       .filter(e => (term ? e.name.toLowerCase().includes(term) || e.nameEn.toLowerCase().includes(term) || e.keywords.some(k => k.includes(term)) : true))
-      .sort((a, b) => a.name.localeCompare(b.name, 'vi'))
+      .sort((a, b) => a.nameEn.localeCompare(b.nameEn, 'en'))
   }, [list, q, muscle, equip])
 
   const startNew = async () => {
@@ -76,13 +77,16 @@ export default function Library({ onOpen, onStart, onResume }: {
 
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         {filtered.length === 0 && <div className="meta" style={{ padding: 18 }}>Không có bài nào khớp bộ lọc.</div>}
-        {filtered.map(ex => (
-          <button key={ex.slug} type="button" className="kv" style={{ width: '100%', background: 'none', border: 'none', borderBottom: '1px solid var(--line)', cursor: 'pointer', textAlign: 'left' }}
-            onClick={() => onOpen(ex.slug)}>
-            <b style={{ display: 'block' }}>{ex.name}{ex.custom ? ' · của bạn' : ''}</b>
-            <span>{MUSCLES.find(m => m.id === ex.muscle)?.label ?? ex.muscle} · {eqLabel(ex.equipment)}</span>
-          </button>
-        ))}
+        {filtered.map(ex => {
+          const names = exNames(ex)
+          return (
+            <button key={ex.slug} type="button" className="kv" style={{ width: '100%', background: 'none', border: 'none', borderBottom: '1px solid var(--line)', cursor: 'pointer', textAlign: 'left' }}
+              onClick={() => onOpen(ex.slug)}>
+              <b style={{ display: 'block' }}>{names.en}{ex.custom ? ' · của bạn' : ''}</b>
+              <span>{names.vi !== names.en ? `${names.vi} · ` : ''}{MUSCLES.find(m => m.id === ex.muscle)?.label ?? ex.muscle} · {eqLabel(ex.equipment)}</span>
+            </button>
+          )
+        })}
       </div>
     </>
   )

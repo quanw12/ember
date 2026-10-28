@@ -57,7 +57,10 @@ export default function SessionRunner({ id, onDone }: { id: number; onDone: () =
   const exercises = useLiveQuery(() => db.exercises.toArray())
   const nameOf = useMemo(() => {
     const m = new Map((exercises ?? []).map(e => [e.slug, e]))
-    return (slug: string) => m.get(slug)?.name ?? slug
+    return (slug: string) => {
+      const e = m.get(slug)
+      return e ? (e.nameEn || e.name) : slug
+    }
   }, [exercises])
 
   useEffect(() => {

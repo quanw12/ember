@@ -2,19 +2,12 @@ import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, type Run } from '../db'
 import { fmtPace, fmtClock } from '../lib/geo'
+import { weekStart } from '../lib/gym'
 import { C25K, C25K_TOTAL } from '../data/c25k'
 import RunTracker from './run/RunTracker'
 import RunDetail from './run/RunDetail'
 
 type RunView = { kind: 'home' } | { kind: 'track' } | { kind: 'detail'; id: number }
-
-function weekStart(d: Date): Date {
-  const x = new Date(d)
-  const day = (x.getDay() + 6) % 7
-  x.setDate(x.getDate() - day)
-  x.setHours(0, 0, 0, 0)
-  return x
-}
 
 export default function Run() {
   const [view, setView] = useState<RunView>({ kind: 'home' })

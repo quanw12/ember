@@ -35,7 +35,7 @@ export async function tickReminder(): Promise<void> {
   let body = 'Giữ lửa — mở EMBER và bắt đầu thôi.'
   if (slugs.length > 0 && routine) {
     const exercises = await db.exercises.toArray()
-    const nameOf = new Map(exercises.map(e => [e.slug, e.name]))
+    const nameOf = new Map(exercises.map(e => [e.slug, e.nameEn || e.name]))
     body = `Hôm nay: ${routine.name} — ${slugs.map(s => nameOf.get(s) ?? s).join(', ')}`
   }
   try {
