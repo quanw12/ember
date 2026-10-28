@@ -18,7 +18,11 @@ function weekStart(d: Date): Date {
 
 export default function Run() {
   const [view, setView] = useState<RunView>({ kind: 'home' })
-  const runs = useLiveQuery(() => db.runs.orderBy('startedAt').reverse().toArray())
+  // runs chỉ index 'date' — 'startedAt' không phải index, orderBy trên đó làm sập tab (NoSuchIndexError)
+  const runs = useLiveQuery(async () => {
+    const rs = await db.runs.toArray()
+    return rs.sort((a, b) => b.startedAt.getTime() - a.startedAt.getTime())
+  })
   const c25kRow = useLiveQuery(() => db.settings.get('c25kDone'))
   const c25kDone = (c25kRow?.value as number | undefined) ?? 0
 
