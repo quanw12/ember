@@ -26,6 +26,8 @@ export default defineConfig({
         ]
       },
       workbox: {
+        // Gom cả GIF bài tập, font, icon vào precache — dùng offline trọn vẹn
+        globPatterns: ['**/*.{js,css,html,gif,png,svg,ico,woff2,json}'],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         runtimeCaching: [
           {

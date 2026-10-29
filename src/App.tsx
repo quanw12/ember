@@ -99,11 +99,13 @@ function AppShell({ onUsersChanged }: { onUsersChanged: () => void }) {
   return (
     <>
       <div className="app">
-        {tab === 'today' && <Today onGoGym={() => setTab('gym')} onQuickStart={startSession} />}
-        {tab === 'gym' && <Gym initial={gymInit} startSession={startSession} />}
-        {tab === 'run' && <Run />}
-        {tab === 'progress' && <Progress />}
-        {tab === 'profile' && <ProfileView onUsersChanged={onUsersChanged} />}
+        <div key={tab} className="anim-view anim-stagger">
+          {tab === 'today' && <Today onGoGym={() => setTab('gym')} onQuickStart={startSession} />}
+          {tab === 'gym' && <Gym initial={gymInit} startSession={startSession} />}
+          {tab === 'run' && <Run />}
+          {tab === 'progress' && <Progress />}
+          {tab === 'profile' && <ProfileView onUsersChanged={onUsersChanged} />}
+        </div>
       </div>
       <nav className="tabbar" aria-label="Điều hướng chính">
         <div className="inner">

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, epley, type Exercise, type SetEntry, type Session } from '../../db'
 import { MUSCLES, EQUIPMENT } from '../../data/exercises.seed'
+import { gifFor } from '../../data/exercise-gifs'
 
 const eqLabel = (id: string): string => EQUIPMENT.find(e => e.id === id)?.label ?? id
 const muscleLabel = (id: string): string => MUSCLES.find(m => m.id === id)?.label ?? id
@@ -26,6 +27,7 @@ interface SessionGroup { session: Session; sets: SetEntry[] }
 export default function ExerciseDetail({ slug, onBack }: { slug: string; onBack: () => void }) {
   const [pinUrl, setPinUrl] = useState('')
   const [tab, setTab] = useState<Tab>('about')
+  const [gifFailed, setGifFailed] = useState(false)
   const exercise = useLiveQuery(() => db.exercises.where('slug').equals(slug).first())
 
   const history = useLiveQuery(async (): Promise<SessionGroup[]> => {
@@ -95,17 +97,32 @@ export default function ExerciseDetail({ slug, onBack }: { slug: string; onBack:
         </div>
       </div>
 
-      {ex.images && ex.images.length > 0 && (
-        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          <div style={{ display: 'flex' }}>
-            {ex.images.map(u => (
-              <img key={u} src={u} alt={`Minh họa ${ex.name}`} loading="lazy"
-                style={{ width: '50%', display: 'block', background: '#FFFFFF' }}
-                onError={e => { e.currentTarget.style.display = 'none' }} />
-            ))}
-          </div>
-        </div>
-      )}
+      {(() => {
+        const gif = gifFor(ex)
+        if (gif && !gifFailed) {
+          return (
+            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+              <img src={gif} alt={`Động tác minh họa ${ex.name}`} loading="lazy"
+                style={{ width: '100%', display: 'block', background: '#FFFFFF' }}
+                onError={() => setGifFailed(true)} />
+            </div>
+          )
+        }
+        if (ex.images && ex.images.length > 0) {
+          return (
+            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+              <div style={{ display: 'flex' }}>
+                {ex.images.map(u => (
+                  <img key={u} src={u} alt={`Minh họa ${ex.name}`} loading="lazy"
+                    style={{ width: '50%', display: 'block', background: '#FFFFFF' }}
+                    onError={e => { e.currentTarget.style.display = 'none' }} />
+                ))}
+              </div>
+            </div>
+          )
+        }
+        return null
+      })()}
 
       <div className="card">
         <div className="eyebrow">VIDEO HƯỚNG DẪN</div>
@@ -144,6 +161,7 @@ export default function ExerciseDetail({ slug, onBack }: { slug: string; onBack:
         ))}
       </div>
 
+      <div className="anim-view" key={tab}>
       {tab === 'about' && (
         <>
           {ex.steps && ex.steps.length > 0 && (
@@ -226,6 +244,7 @@ export default function ExerciseDetail({ slug, onBack }: { slug: string; onBack:
           )}
         </div>
       )}
+      </div>
     </>
   )
 }
