@@ -2,9 +2,10 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../../db'
 import TodayPlanCard from '../../components/TodayPlanCard'
 
-export default function PlansHome({ onStart, onEdit }: {
+export default function PlansHome({ onStart, onEdit, onOpenPlanner }: {
   onStart: (slugs: string[], name: string) => void
   onEdit: (id: number) => void
+  onOpenPlanner: () => void
 }) {
   const routines = useLiveQuery(() => db.routines.toArray())
   const activeRow = useLiveQuery(() => db.settings.get('activeRoutineId'))
@@ -50,7 +51,8 @@ export default function PlansHome({ onStart, onEdit }: {
             </div>
           )
         })}
-        <button className="btn ghost" style={{ marginTop: 12 }} onClick={createNew}>+ Kế hoạch mới</button>
+        <button className="btn" style={{ marginTop: 12 }} onClick={onOpenPlanner}>LẬP LỊCH TUẦN MỚI (CÓ GỢI Ý)</button>
+        <button className="btn ghost" style={{ marginTop: 10 }} onClick={createNew}>+ Kế hoạch trống</button>
       </div>
 
       <p className="note">

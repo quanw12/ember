@@ -58,6 +58,11 @@ function AppShell({ onUsersChanged }: { onUsersChanged: () => void }) {
     setTab('gym')
   }
 
+  const openPlanner = () => {
+    setGymInit({ kind: 'weekly' })
+    setTab('gym')
+  }
+
   // Seed riêng cho từng hồ sơ (chạy khi AppShell của hồ sơ đó mount).
   // Single-flight: StrictMode gọi effect 2 lần — chỉ cho 1 chuỗi seed chạy,
   // nếu không luồng thứ hai sẽ update() giữa chừng và đụng primary key.
@@ -115,7 +120,7 @@ function AppShell({ onUsersChanged }: { onUsersChanged: () => void }) {
     <>
       <div className="app">
         <div key={tab} className="anim-view anim-stagger">
-          {tab === 'today' && <Today onGoGym={() => setTab('gym')} onQuickStart={startSession} />}
+          {tab === 'today' && <Today onGoGym={() => setTab('gym')} onQuickStart={startSession} onOpenPlanner={openPlanner} />}
           {tab === 'gym' && <Gym initial={gymInit} startSession={startSession} />}
           {tab === 'run' && <Run />}
           {tab === 'progress' && <Progress />}

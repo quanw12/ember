@@ -4,9 +4,11 @@ import ExerciseDetail from './gym/ExerciseDetail'
 import SessionRunner from './gym/SessionRunner'
 import PlansHome from './gym/PlansHome'
 import PlanEditor from './gym/PlanEditor'
+import WeeklyPlanner from './gym/WeeklyPlanner'
 
 export type GymView =
   | { kind: 'plans' }
+  | { kind: 'weekly' }
   | { kind: 'library' }
   | { kind: 'detail'; slug: string }
   | { kind: 'plan'; id: number }
@@ -22,7 +24,9 @@ export default function Gym({ initial, startSession }: {
   const content = (() => {
     switch (view.kind) {
       case 'plans':
-        return <PlansHome onStart={startSession} onEdit={id => setView({ kind: 'plan', id })} />
+        return <PlansHome onStart={startSession} onEdit={id => setView({ kind: 'plan', id })} onOpenPlanner={() => setView({ kind: 'weekly' })} />
+      case 'weekly':
+        return <WeeklyPlanner onBack={() => setView({ kind: 'plans' })} />
       case 'library':
         return (
           <Library
@@ -45,7 +49,7 @@ export default function Gym({ initial, startSession }: {
   return (
     <>
       <div className="seg" style={{ marginTop: 16 }}>
-        <button type="button" className={view.kind === 'plans' || view.kind === 'plan' ? 'on' : ''} onClick={() => setView({ kind: 'plans' })}>Kế hoạch</button>
+        <button type="button" className={view.kind === 'plans' || view.kind === 'plan' || view.kind === 'weekly' ? 'on' : ''} onClick={() => setView({ kind: 'plans' })}>Kế hoạch</button>
         <button type="button" className={view.kind === 'library' || view.kind === 'detail' ? 'on' : ''} onClick={() => setView({ kind: 'library' })}>Thư viện</button>
       </div>
       <div key={view.kind === 'detail' ? `detail:${view.slug}` : view.kind} className="anim-view anim-stagger">

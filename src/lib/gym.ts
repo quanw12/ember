@@ -88,3 +88,24 @@ export async function todayPlanOf(): Promise<TodayPlan | null> {
   const day = routine.days.find(d => d.weekday === weekday)
   return { routineId: routine.id, routineName: routine.name, weekday, slugs: day?.slugs ?? [] }
 }
+
+/* ------------------------------------------------------------------ */
+/* Nhắc lập lịch tuần mới vào cuối tuần.                               */
+/* ------------------------------------------------------------------ */
+
+/** Hôm nay là thứ 7 hoặc chủ nhật? */
+export function isWeekend(d = new Date()): boolean {
+  const wd = jsDayToWeekday(d.getDay())
+  return wd === 6 || wd === 7
+}
+
+/** Khóa tuần = ISO ngày thứ hai của tuần hiện tại — so sánh chuỗi là đủ. */
+export function weekKey(d = new Date()): string {
+  return localIso(weekStart(d))
+}
+
+/** Đã lập lịch cho tuần này chưa (weeklyPlannedOn ghi lúc lưu WeeklyPlanner). */
+export function plannedThisWeek(plannedOn: string | undefined): boolean {
+  if (!plannedOn) return false
+  return plannedOn >= weekKey()
+}
