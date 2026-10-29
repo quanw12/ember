@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, todayStr, movingAvg, getActiveSlot } from '../db'
 import { macroPlan, GOAL_OPTIONS, toDisplayW, cycleInfo, PHASE_LABEL, type Unit } from '../lib/calc'
-import { streakOf, workoutDates } from '../lib/gym'
+import { streakOf, workoutDates, isWeekend, weekKey, plannedThisWeek } from '../lib/gym'
 import { FlameIcon } from '../components/icons'
 import TargetPhoto from '../components/TargetPhoto'
 import TodayPlanCard from '../components/TodayPlanCard'
@@ -15,7 +15,11 @@ function greeting(name?: string): string {
 
 const DAYS = ['Chủ nhật', 'Thứ hai', 'Thứ ba', 'Thứ tư', 'Thứ năm', 'Thứ sáu', 'Thứ bảy']
 
-export default function Today({ onGoGym, onQuickStart }: { onGoGym: () => void; onQuickStart: (slugs: string[], name: string) => void }) {
+export default function Today({ onGoGym, onQuickStart, onOpenPlanner }: {
+  onGoGym: () => void
+  onQuickStart: (slugs: string[], name: string) => void
+  onOpenPlanner: () => void
+}) {
   const today = todayStr()
   const profile = useLiveQuery(() => db.profile.get(1))
   const bodyLogs = useLiveQuery(() => db.bodyLogs.orderBy('date').toArray())
@@ -26,6 +30,11 @@ export default function Today({ onGoGym, onQuickStart }: { onGoGym: () => void; 
   const cycleQ = useLiveQuery(() => db.cycleLogs.orderBy('date').reverse().toArray())
   const unitRow = useLiveQuery(() => db.settings.get('unit'))
   const unit = (unitRow?.value as Unit | undefined) ?? 'kg'
+  const plannedRow = useLiveQuery(() => db.settings.get('weeklyPlannedOn'))
+  const nudgeOffRow = useLiveQuery(() => db.settings.get('weeklyNudgeOff'))
+  const showWeeklyNudge = isWeekend()
+    && !plannedThisWeek(plannedRow?.value as string | undefined)
+    && (nudgeOffRow?.value as string | undefined) !== weekKey()
 
   const [kcal, setKcal] = useState('')
   const [protein, setProtein] = useState('')
@@ -111,6 +120,19 @@ export default function Today({ onGoGym, onQuickStart }: { onGoGym: () => void; 
         </div>
         {profile.targetPhoto && <TargetPhoto blob={profile.targetPhoto} />}
       </div>
+
+      {showWeeklyNudge && (
+        <div className="card" style={{ borderColor: 'var(--red-deep)' }}>
+          <div className="eyebrow">CUỐI TUẦN · LÊN LỊCH</div>
+          <h2 className="h" style={{ marginTop: 4 }}>Tuần tới muốn tập những ngày nào, nhóm cơ nào?</h2>
+          <div className="meta">Chọn ngày + nhóm cơ trên bản đồ cơ thể, hệ thống gợi ý bài để bạn tự chọn — 2 phút là xong.</div>
+          <button className="btn" style={{ marginTop: 12 }} onClick={onOpenPlanner}>LẬP LỊCH TUẦN MỚI</button>
+          <button type="button" onClick={async () => { await db.settings.put({ key: 'weeklyNudgeOff', value: weekKey() }) }}
+            style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: 12, marginTop: 10 }}>
+            Để sau — tuần sau nhắc lại
+          </button>
+        </div>
+      )}
 
       <TodayPlanCard onStart={onQuickStart} onGoPlans={onGoGym} />
 
