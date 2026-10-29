@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { MUSCLES } from '../../data/exercises.seed'
 
+interface PickableExercise { slug: string; name: string; nameEn: string; muscle: string; keywords: string[] }
+
 /** Bảng chọn bài tập dùng chung: thêm bài vào buổi tập hoặc vào ngày trong kế hoạch. */
 export default function ExercisePicker({ exercises, picked, onPick, onClose }: {
-  exercises: { slug: string; name: string; muscle: string; keywords: string[] }[]
+  exercises: PickableExercise[]
   picked: string[]
   onPick: (slug: string) => void
   onClose: () => void
@@ -13,8 +15,8 @@ export default function ExercisePicker({ exercises, picked, onPick, onClose }: {
   const term = q.trim().toLowerCase()
   const list = exercises
     .filter(e => (muscle ? e.muscle === muscle : true))
-    .filter(e => (term ? e.name.toLowerCase().includes(term) || e.keywords.some(k => k.includes(term)) : true))
-    .sort((a, b) => a.name.localeCompare(b.name, 'vi'))
+    .filter(e => (term ? e.nameEn.toLowerCase().includes(term) || e.name.toLowerCase().includes(term) || e.keywords.some(k => k.includes(term)) : true))
+    .sort((a, b) => a.nameEn.localeCompare(b.nameEn, 'en'))
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 40, background: 'rgba(6,6,8,.7)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }} onClick={onClose}>
@@ -32,8 +34,8 @@ export default function ExercisePicker({ exercises, picked, onPick, onClose }: {
           {list.map(e => (
             <button key={e.slug} type="button" className="kv" style={{ width: '100%', background: 'none', border: 'none', borderBottom: '1px solid var(--line)', cursor: 'pointer', textAlign: 'left', opacity: picked.includes(e.slug) ? 0.45 : 1 }}
               onClick={() => onPick(e.slug)}>
-              <b>{e.name}{picked.includes(e.slug) ? ' — đã chọn' : ''}</b>
-              <span>{MUSCLES.find(m => m.id === e.muscle)?.label ?? e.muscle}</span>
+              <b>{e.nameEn}{picked.includes(e.slug) ? ' — đã chọn' : ''}</b>
+              <span>{e.nameEn !== e.name ? `${e.name} · ` : ''}{MUSCLES.find(m => m.id === e.muscle)?.label ?? e.muscle}</span>
             </button>
           ))}
         </div>

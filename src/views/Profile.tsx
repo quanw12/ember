@@ -6,6 +6,7 @@ import { exportIcs } from '../lib/calendar'
 import type { ReminderCfg } from '../lib/reminders'
 import { compressImage } from '../lib/image'
 import TargetPhoto from '../components/TargetPhoto'
+import StreakCalendar from '../components/StreakCalendar'
 
 const pad = (n: number): string => String(n).padStart(2, '0')
 
@@ -163,6 +164,11 @@ export default function ProfileView({ onUsersChanged }: { onUsersChanged: () => 
           })()}
         </div>
       )}
+
+      <div className="card">
+        <div className="eyebrow">LỬA CHECK-IN · LỊCH THÁNG</div>
+        <StreakCalendar />
+      </div>
 
       <div className="card">
         <div className="eyebrow">NHẮC NHỞ HẰNG NGÀY</div>

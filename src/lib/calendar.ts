@@ -15,7 +15,7 @@ export async function exportIcs(): Promise<void> {
   const activeRow = await db.settings.get('activeRoutineId')
   const routine = activeRow ? await db.routines.get(activeRow.value as number) : undefined
   const exercises = await db.exercises.toArray()
-  const nameOf = new Map(exercises.map(e => [e.slug, e.name]))
+  const nameOf = new Map(exercises.map(e => [e.slug, e.nameEn || e.name]))
 
   const lines: string[] = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//EMBER//VI', 'CALSCALE:GREGORIAN']
   for (let i = 1; i <= 14; i++) {

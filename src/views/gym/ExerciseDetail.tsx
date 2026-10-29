@@ -3,22 +3,10 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db, epley, type Exercise, type SetEntry, type Session } from '../../db'
 import { MUSCLES, EQUIPMENT } from '../../data/exercises.seed'
 import { gifFor } from '../../data/exercise-gifs'
+import { videoLinks, weekStart } from '../../lib/gym'
 
 const eqLabel = (id: string): string => EQUIPMENT.find(e => e.id === id)?.label ?? id
 const muscleLabel = (id: string): string => MUSCLES.find(m => m.id === id)?.label ?? id
-
-const tiktokSearch = (nameEn: string): string =>
-  `https://www.tiktok.com/search?q=${encodeURIComponent(`${nameEn} form tutorial`)}`
-const youtubeSearch = (nameEn: string): string =>
-  `https://www.youtube.com/results?search_query=${encodeURIComponent(`${nameEn} form tutorial`)}`
-
-function weekStart(d: Date): Date {
-  const x = new Date(d)
-  const day = (x.getDay() + 6) % 7
-  x.setDate(x.getDate() - day)
-  x.setHours(0, 0, 0, 0)
-  return x
-}
 
 type Tab = 'about' | 'history' | 'progress' | 'records'
 
@@ -88,8 +76,8 @@ export default function ExerciseDetail({ slug, onBack }: { slug: string; onBack:
         <button type="button" onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--text-2)', cursor: 'pointer', fontSize: 13, padding: 0 }}>
           ← Thư viện
         </button>
-        <h1 className="h">{ex.name}</h1>
-        <div className="meta">{ex.nameEn}</div>
+        <h1 className="h">{ex.nameEn}</h1>
+        {ex.nameEn !== ex.name && <div className="meta">{ex.name}</div>}
         <div className="seg" style={{ marginTop: 10 }}>
           <span className="streak" style={{ color: 'var(--text-2)', fontWeight: 500 }}>{muscleLabel(ex.muscle)}</span>
           <span className="streak" style={{ color: 'var(--text-2)', fontWeight: 500 }}>{eqLabel(ex.equipment)}</span>
@@ -134,10 +122,10 @@ export default function ExerciseDetail({ slug, onBack }: { slug: string; onBack:
         )}
         <div className="row" style={{ marginTop: ex.pinnedVideoUrl ? 0 : 8 }}>
           <div style={{ flex: 1 }}>
-            <a className="btn ghost" style={{ textAlign: 'center', textDecoration: 'none' }} href={tiktokSearch(ex.nameEn)} target="_blank" rel="noreferrer">TikTok</a>
+            <a className="btn ghost" style={{ textAlign: 'center', textDecoration: 'none' }} href={videoLinks(ex.nameEn).tiktok} target="_blank" rel="noreferrer">TikTok</a>
           </div>
           <div style={{ flex: 1 }}>
-            <a className="btn ghost" style={{ textAlign: 'center', textDecoration: 'none' }} href={youtubeSearch(ex.nameEn)} target="_blank" rel="noreferrer">YouTube</a>
+            <a className="btn ghost" style={{ textAlign: 'center', textDecoration: 'none' }} href={videoLinks(ex.nameEn).youtube} target="_blank" rel="noreferrer">YouTube</a>
           </div>
         </div>
         {!ex.pinnedVideoUrl && (
