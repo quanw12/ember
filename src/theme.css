@@ -141,6 +141,52 @@ label.f { display: block; font-size: 12px; color: var(--text-2); margin: 12px 0 
 }
 .restbar .chip.on { border-color: var(--red); color: var(--red-soft); }
 
+/* ===== Motion ===== */
+@keyframes view-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes card-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes pop {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.22); }
+  100% { transform: scale(1); }
+}
+
+/* Toàn khối nội dung khi đổi tab chính / đổi view */
+.anim-view { animation: view-in .3s cubic-bezier(.22, .68, .31, 1) both; }
+
+/* Con cấp 1 xuất hiện lần lượt lệch pha nhẹ — nội dung "dồn" vào tự nhiên */
+.anim-stagger > * { animation: card-in .34s cubic-bezier(.22, .68, .31, 1) both; }
+.anim-stagger > *:nth-child(2) { animation-delay: 45ms; }
+.anim-stagger > *:nth-child(3) { animation-delay: 90ms; }
+.anim-stagger > *:nth-child(4) { animation-delay: 135ms; }
+.anim-stagger > *:nth-child(5) { animation-delay: 180ms; }
+.anim-stagger > *:nth-child(6) { animation-delay: 220ms; }
+.anim-stagger > *:nth-child(7) { animation-delay: 255ms; }
+.anim-stagger > *:nth-child(n+8) { animation-delay: 285ms; }
+
+/* Nút bấm nhấn xuống có phản hồi */
+.btn, .seg button, .optcard, .restbar .chip,
+.nav.nav-pills button {
+  transition: transform .12s ease, opacity .15s ease, background-color .18s ease, border-color .18s ease, color .18s ease;
+}
+.btn:active, .seg button:active, .optcard:active, .restbar .chip:active,
+.nav.nav-pills button:active { transform: scale(.96); }
+
+/* Tab bar dưới: đổi màu mượt + icon nhún khi active */
+.tab { transition: color .18s ease, transform .12s ease; }
+.tab:active { transform: scale(.9); }
+.tab.on svg { animation: pop .32s cubic-bezier(.22, .68, .31, 1); }
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-view, .anim-stagger > *, .tab.on svg { animation: none; }
+  .btn, .seg button, .optcard, .restbar .chip, .nav.nav-pills button,
+  .tab, .tab:active { transition: none; transform: none; }
+}
 /* ---- Coach (chatbot offline) ---- */
 .coach-fab {
   position: fixed; right: 16px; bottom: calc(76px + env(safe-area-inset-bottom));

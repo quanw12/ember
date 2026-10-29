@@ -48,7 +48,9 @@ export default function Gym({ initial, startSession }: {
         <button type="button" className={view.kind === 'plans' || view.kind === 'plan' ? 'on' : ''} onClick={() => setView({ kind: 'plans' })}>Kế hoạch</button>
         <button type="button" className={view.kind === 'library' || view.kind === 'detail' ? 'on' : ''} onClick={() => setView({ kind: 'library' })}>Thư viện</button>
       </div>
-      {content}
+      <div key={view.kind === 'detail' ? `detail:${view.slug}` : view.kind} className="anim-view anim-stagger">
+        {content}
+      </div>
     </>
   )
 }
