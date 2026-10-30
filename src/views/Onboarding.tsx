@@ -65,6 +65,22 @@ export default function Onboarding() {
 
   const plan = macroPlan(d)
 
+  // Kiểm tra chéo: tổng buổi gym + chạy nên phản ánh đúng mức vận động đã chọn,
+  // nếu không TDEE (hệ số nhân) sẽ tính lệch so với nhịp tập thật.
+  const SESSION_RANGE: Record<Profile['activity'], [number, number]> = {
+    sedentary: [0, 2],
+    light: [1, 4],
+    moderate: [3, 6],
+    active: [4, 9],
+    athlete: [6, 14]
+  }
+  const totalSessions = d.daysGym + d.daysRun
+  const actRange = SESSION_RANGE[d.activity]
+  const actLabel = ACTIVITY_OPTIONS.find(a => a.id === d.activity)?.label ?? d.activity
+  const intensityMismatch = totalSessions < actRange[0] || totalSessions > actRange[1]
+  const bestFitActivity: Profile['activity'] =
+    totalSessions <= 2 ? 'sedentary' : totalSessions <= 4 ? 'light' : totalSessions <= 6 ? 'moderate' : totalSessions <= 9 ? 'active' : 'athlete'
+
   const save = async () => {
     await db.profile.put({ ...d, id: 1, targetPhoto: targetPhoto ?? undefined, createdAt: new Date(), updatedAt: new Date() })
     await db.bodyLogs.add({ date: new Date().toISOString().slice(0, 10), weightKg: d.weightKg })
@@ -121,6 +137,16 @@ export default function Onboarding() {
             <NumInput id="dg" min={0} max={7} value={d.daysGym} onCommit={n => set('daysGym', Math.min(7, Math.max(0, Math.round(n ?? 0))))} />
             <label className="f" htmlFor="dr">Số buổi chạy mỗi tuần</label>
             <NumInput id="dr" min={0} max={7} value={d.daysRun} onCommit={n => set('daysRun', Math.min(7, Math.max(0, Math.round(n ?? 0))))} />
+            {intensityMismatch && (
+              <div className="note" style={{ borderColor: 'var(--warn)', color: 'var(--text-1)' }}>
+                ⚠ Mức vận động đang <b>{actLabel}</b> nhưng bạn nhập tổng <b>{totalSessions} buổi/tuần</b> (gợi ý {actRange[0]}–{actRange[1]}).
+                Calo sẽ tính lệch nếu hai con số này không khớp.
+                <button type="button" className="btn ghost" style={{ width: 'auto', padding: '8px 12px', marginTop: 8, fontSize: 12 }}
+                  onClick={() => set('activity', bestFitActivity)}>
+                  Chỉnh mức vận động cho khớp ({ACTIVITY_OPTIONS.find(a => a.id === bestFitActivity)?.label})
+                </button>
+              </div>
+            )}
           </div>
           <div className="spacer" />
           <button className="btn" onClick={() => setStep(2)}>Tiếp tục</button>
