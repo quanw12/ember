@@ -21,6 +21,7 @@ export default function Today({ onGoGym, onQuickStart }: { onGoGym: () => void; 
   const todayNutrition = useLiveQuery(() => db.nutritionLogs.where('date').equals(today).first())
   const todaySleep = useLiveQuery(() => db.sleepLogs.where('date').equals(today).first())
   const sessions = useLiveQuery(() => db.sessions.toArray())
+  const checkins = useLiveQuery(() => db.checkins.toArray())
   const activeRow = useLiveQuery(() => db.settings.get('activeRoutineId'))
   const routines = useLiveQuery(() => db.routines.toArray())
   const exercises = useLiveQuery(() => db.exercises.toArray())
@@ -57,13 +58,24 @@ export default function Today({ onGoGym, onQuickStart }: { onGoGym: () => void; 
     }
   }
 
-  // Streak: số ngày liên tục có buổi tập, đếm từ hôm nay/lùi về sau
-  const sessionDates = new Set((sessions ?? []).map(s => s.date))
+  // Streak: ngày liên tục có lửa = có buổi tập HOẶC có check-in (thắp lửa không cần ảnh)
+  const litDates = new Set<string>((sessions ?? []).map(s => s.date))
+  for (const c of checkins ?? []) litDates.add(c.date)
+  const checkedInToday = litDates.has(today)
   let streak = 0
   const cursor = new Date()
-  while (sessionDates.has(cursor.toISOString().slice(0, 10))) {
+  while (litDates.has(cursor.toISOString().slice(0, 10))) {
     streak++
     cursor.setDate(cursor.getDate() - 1)
+  }
+
+  // Dải 7 ngày gần nhất cho card check-in (đậm dần theo lửa)
+  const last7: { date: string; lit: boolean }[] = []
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date()
+    d.setDate(d.getDate() - i)
+    const ds = d.toISOString().slice(0, 10)
+    last7.push({ date: ds, lit: litDates.has(ds) })
   }
 
   const goalLabel = GOAL_OPTIONS.find(g => g.id === profile.goal)?.label ?? profile.goal
@@ -92,6 +104,12 @@ export default function Today({ onGoGym, onQuickStart }: { onGoGym: () => void; 
 
   const R = 30, C = 2 * Math.PI * R
 
+  /** Check-in: thắp lửa ngày hôm nay — không cần chụp ảnh. */
+  const checkin = async () => {
+    const existing = await db.checkins.where('date').equals(today).first()
+    if (!existing) await db.checkins.add({ date: today, ts: new Date() })
+  }
+
   return (
     <>
       <div style={{ paddingTop: 22 }}>
@@ -100,6 +118,33 @@ export default function Today({ onGoGym, onQuickStart }: { onGoGym: () => void; 
         <div style={{ marginTop: 10 }}>
           <span className="streak"><FlameIcon /> {streak > 0 ? `${streak} ngày giữ lửa` : 'Bắt đầu lửa hôm nay'}</span>
         </div>
+      </div>
+
+      <div className="card row" style={{ alignItems: 'center', gap: 14 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="eyebrow">CHECK IN HẰNG NGÀY</div>
+          <h2 className="h" style={{ marginTop: 2 }}>{checkedInToday ? 'Lửa đang cháy.' : 'Thắp lửa hôm nay.'}</h2>
+          <div className="row" style={{ gap: 6, marginTop: 6 }}>
+            {last7.map(d => (
+              <span key={d.date} title={d.date} style={{
+                width: 11, height: 11, borderRadius: 999,
+                background: d.lit ? 'var(--ember)' : 'var(--line-2)',
+                boxShadow: d.lit ? '0 0 6px rgba(255,122,69,.55)' : 'none',
+                border: d.date === today ? '1.5px solid var(--text-2)' : 'none'
+              }} />
+            ))}
+          </div>
+        </div>
+        {checkedInToday ? (
+          <span className="streak" style={{ color: 'var(--ember)', fontSize: 13 }}><FlameIcon /> Đã check in</span>
+        ) : (
+          <button className="btn" style={{ width: 'auto', padding: '12px 18px', margin: 0, boxShadow: '0 0 18px rgba(232,35,42,.35)' }}
+            onClick={checkin}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
+              <FlameIcon /> THẮP LỬA
+            </span>
+          </button>
+        )}
       </div>
 
       <div className="card row">

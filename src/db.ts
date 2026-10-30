@@ -126,6 +126,13 @@ export interface CycleLog {
   kind: 'start'
 }
 
+/** Check-in hằng ngày — thắp lửa không cần ảnh. date: YYYY-MM-DD. */
+export interface Checkin {
+  id?: number
+  date: string
+  ts: Date
+}
+
 class EmberDB extends Dexie {
   profile!: Table<Profile, number>
   exercises!: Table<Exercise, number>
@@ -139,6 +146,7 @@ class EmberDB extends Dexie {
   routines!: Table<Routine, number>
   photos!: Table<Photo, number>
   cycleLogs!: Table<CycleLog, number>
+  checkins!: Table<Checkin, number>
 
   constructor(name: string) {
     super(name)
@@ -168,6 +176,10 @@ class EmberDB extends Dexie {
     this.version(5).stores({ exercises: null })
     this.version(6).stores({
       exercises: '++id, slug, muscle, equipment'
+    })
+    // v7: check-in hằng ngày (thắp lửa) — tách khỏi buổi tập để bắt streak không cần ảnh
+    this.version(7).stores({
+      checkins: '++id, date'
     })
   }
 }
