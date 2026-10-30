@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, epley, type Exercise, type SetEntry, type Session } from '../../db'
 import { MUSCLES, EQUIPMENT } from '../../data/exercises.seed'
+import MuscleFigure from '../../components/MuscleFigure'
 
 const eqLabel = (id: string): string => EQUIPMENT.find(e => e.id === id)?.label ?? id
 const muscleLabel = (id: string): string => MUSCLES.find(m => m.id === id)?.label ?? id
@@ -94,6 +95,17 @@ export default function ExerciseDetail({ slug, onBack }: { slug: string; onBack:
           {ex.level && <span className="streak" style={{ color: 'var(--text-2)', fontWeight: 500 }}>{ex.level}</span>}
         </div>
       </div>
+
+      {ex.muscle !== 'other' && (
+        <div className="card">
+          <div className="eyebrow">NHÓM CƠ ĐÍCH · {muscleLabel(ex.muscle).toUpperCase()}</div>
+          <div className="row" style={{ marginTop: 10, justifyContent: 'center', gap: 30 }}>
+            <MuscleFigure highlight={[ex.muscle]} view="front" height={185} />
+            <MuscleFigure highlight={[ex.muscle]} view="back" height={185} />
+          </div>
+          <div className="note">Nhóm cơ bài này nhắm tới sẽ sáng đỏ — mặt trước bên trái, mặt sau bên phải.</div>
+        </div>
+      )}
 
       {ex.images && ex.images.length > 0 && (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
