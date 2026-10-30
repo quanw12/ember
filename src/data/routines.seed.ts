@@ -11,8 +11,8 @@ export const jsDayToWeekday = (js: number): number => (js === 0 ? 7 : js)
 interface TemplateDay { weekday: number; slugs: string[] }
 export interface Template { name: string; days: TemplateDay[] }
 
-/** Template dựng theo chuẩn phổ biến: StrongLifts/Starting Strength (full body), Upper/Lower cổ điển, PPL, PHUL, PPLUL. */
-export const ROUTINES_SEED_REV = 3
+/** Template dựng theo chuẩn phổ biến: Full Body, Upper/Lower, PPL, PHUL, PPLUL + template nữ (Mông & Chân/Mông & Upper). */
+export const ROUTINES_SEED_REV = 4
 
 export const ROUTINE_TEMPLATES: Template[] = [
   {
@@ -79,11 +79,33 @@ export const ROUTINE_TEMPLATES: Template[] = [
   }
 ]
 
+/** Template riêng cho chế độ nữ — thiên về mông/chân, theo xu hướng huấn luyện nữ phổ biến. */
+export const FEMALE_TEMPLATES: Template[] = [
+  {
+    name: 'Mông & Chân 3 buổi (nữ)',
+    days: [
+      { weekday: 2, slugs: ['back-squat', 'hip-thrust', 'bulgarian-split', 'glute-bridge', 'plank'] },
+      { weekday: 4, slugs: ['rdl', 'hip-abduction', 'cable-kickback', 'leg-curl', 'hanging-leg-raise'] },
+      { weekday: 6, slugs: ['db-step-up', 'walking-lunge', 'hip-thrust', 'standing-calf', 'russian-twist'] }
+    ]
+  },
+  {
+    name: 'Mông & Upper 4 buổi (nữ)',
+    days: [
+      { weekday: 2, slugs: ['bench-press', 'lat-pulldown', 'seated-db-press', 'barbell-curl', 'triceps-pushdown'] },
+      { weekday: 3, slugs: ['hip-thrust', 'back-squat', 'bulgarian-split', 'hip-abduction', 'glute-bridge'] },
+      { weekday: 5, slugs: ['one-arm-row', 'incline-db-press', 'lateral-raise', 'hammer-curl', 'face-pull'] },
+      { weekday: 6, slugs: ['rdl', 'db-step-up', 'cable-kickback', 'leg-curl', 'standing-calf'] }
+    ]
+  }
+]
+
 const ALLOWED_EQUIPMENT: Record<Profile['equipment'], string[]> = {
   full: ['barbell', 'dumbbell', 'machine', 'cable', 'bodyweight', 'other'],
   home: ['dumbbell', 'bodyweight', 'other'],
   bodyweight: ['bodyweight']
 }
+export { ALLOWED_EQUIPMENT }
 
 /** Lọc bài của template theo dụng cụ cho phép — ngày rơi hết bài sẽ bị bỏ. */
 export function filterTemplate(t: Template, bySlug: Map<string, Pick<Exercise, 'slug' | 'equipment'>>, equipment: Profile['equipment']): RoutineDay[] {
@@ -109,8 +131,9 @@ export async function createRoutineFromTemplate(name: string, equipment: Profile
 /**
  * Tạo template lần đầu cho hồ sơ — lọc bài theo dụng cụ người đó khai báo
  * (chạy sau onboarding vì cần biết equipment; idempotent theo routinesSeedRev).
+ * Chế độ nữ (sex 'female') được thêm template thiên về mông/chân.
  */
-export async function ensureTemplatesFor(equipment: Profile['equipment']): Promise<void> {
+export async function ensureTemplatesFor(equipment: Profile['equipment'], sex: Profile['sex']): Promise<void> {
   const rSeedRow = await db.settings.get('routinesSeedRev')
   const rSeed = (rSeedRow?.value as number | undefined) ?? 0
   if (rSeed >= ROUTINES_SEED_REV) return
@@ -118,7 +141,8 @@ export async function ensureTemplatesFor(equipment: Profile['equipment']): Promi
   if (exercises.length === 0) return // thư viện chưa nạp xong — thử lại ở lần mở sau, đừng đốt cờ
   const bySlug = new Map(exercises.map(e => [e.slug, e]))
   const existingNames = new Set((await db.routines.toArray()).map(r => r.name))
-  for (const t of ROUTINE_TEMPLATES) {
+  const templates = sex === 'female' ? [...ROUTINE_TEMPLATES, ...FEMALE_TEMPLATES] : ROUTINE_TEMPLATES
+  for (const t of templates) {
     if (existingNames.has(t.name)) continue
     const days = filterTemplate(t, bySlug, equipment)
     if (days.length > 0) {

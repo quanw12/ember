@@ -293,7 +293,11 @@ export const db = new Proxy({} as EmberDB, {
   }
 }) as EmberDB
 
-export const todayStr = (): string => new Date().toISOString().slice(0, 10)
+export const todayStr = (): string => {
+  const d = new Date()
+  const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}` // giờ máy — toISOString dịch theo UTC, sai ngày ở múi giờ + (vd 5h sáng VN)
+}
 
 /** Trung bình trượt của n điểm cuối cùng — chống nhiễu nước khi cân. */
 export function movingAvg(vals: number[], win = 7): number | null {

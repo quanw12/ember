@@ -1,0 +1,60 @@
+/* WeeklyPlanner + BodyMap — tách file riêng để khỏi đụng theme.css (tránh conflict với PR GIF/motion) */
+
+/* --- Body map --- */
+.bm-wrap { display: flex; gap: 14px; justify-content: center; }
+.bm-fig { flex: 1; max-width: 150px; }
+.bm-caption { text-align: center; font-size: 11px; color: var(--text-3); letter-spacing: .14em; text-transform: uppercase; margin-top: 4px; }
+
+.bm-body-g > * { fill: var(--bg-1); stroke: var(--line-2); stroke-width: 1; }
+.bm-region {
+  fill: rgba(154, 154, 163, .30); fill-opacity: 1;
+  stroke: transparent; stroke-width: 1.5;
+  cursor: pointer; transition: fill .15s ease, stroke .15s ease; outline: none;
+}
+.bm-region:hover { fill: rgba(154, 154, 163, .55); }
+.bm-region:focus-visible { stroke: var(--ember); }
+.bm-region.on { fill: var(--red); }
+.bm-region.on:hover { fill: var(--red-soft); }
+.bm-region.on > title + path { fill: var(--red); }
+
+.bm-legend { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; justify-content: center; }
+.bm-chip {
+  background: var(--bg-1); border: 1px solid var(--line-2); color: var(--text-2);
+  border-radius: 999px; padding: 6px 11px; font-size: 12px; font-weight: 600;
+  cursor: pointer; transition: border-color .15s ease, color .15s ease, background-color .15s ease;
+  font-family: inherit;
+}
+.bm-chip.on { border-color: var(--red); color: var(--red-soft); background: rgba(232, 35, 42, .08); }
+
+@media (prefers-reduced-motion: reduce) {
+  .bm-region, .bm-chip { transition: none; }
+}
+
+/* --- Day tabs + danh sách chọn bài --- */
+.wp-daytabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.wp-daytab {
+  background: var(--bg-1); border: 1px solid var(--line-2); color: var(--text-2);
+  border-radius: 10px; padding: 8px 12px; font-size: 13px; font-weight: 600;
+  cursor: pointer; font-family: inherit; transition: border-color .15s ease, background-color .15s ease;
+}
+.wp-daytab.on { background: var(--red); border-color: var(--red); color: #fff; }
+
+.wp-pickrow {
+  display: flex; align-items: center; gap: 10px; padding: 10px 0;
+  border-top: 1px solid var(--line); width: 100%;
+  background: none; border-left: none; border-right: none; border-bottom: none;
+  cursor: pointer; text-align: left; color: var(--text-1); font-family: inherit;
+}
+.wp-pickrow b { font-size: 13px; font-weight: 600; display: block; }
+.wp-pickrow .sub { font-size: 11.5px; color: var(--text-2); display: block; margin-top: 2px; }
+.wp-role {
+  flex-shrink: 0; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  border-radius: 6px; padding: 3px 6px; background: var(--bg-1); border: 1px solid var(--line-2); color: var(--text-2);
+}
+.wp-role.compound { border-color: var(--red-deep); color: var(--red-soft); }
+
+.wp-ordernote { font-size: 11px; color: var(--text-3); font-style: italic; }
+
+@media (prefers-reduced-motion: reduce) {
+  .wp-daytab, .wp-chip { transition: none; }
+}

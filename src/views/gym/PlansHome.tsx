@@ -1,18 +1,19 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../../db'
-import { weekdayLabel, weekdayShort, jsDayToWeekday, ROUTINE_TEMPLATES, createRoutineFromTemplate } from '../../data/routines.seed'
-import { suggestPlans } from '../../lib/recommend'
+import TodayPlanCard from '../../components/TodayPlanCard'
+import { weekdayShort, ROUTINE_TEMPLATES, createRoutineFromTemplate } from '../../data/routines.seed'
+import { suggestPlans } from '../../lib/planSuggest'
 
 const DAY_CHOICES = [2, 3, 4, 5, 6]
 
-export default function PlansHome({ onStart, onEdit }: {
+export default function PlansHome({ onStart, onEdit, onOpenPlanner }: {
   onStart: (slugs: string[], name: string) => void
   onEdit: (id: number) => void
+  onOpenPlanner: () => void
 }) {
   const routines = useLiveQuery(() => db.routines.toArray())
   const activeRow = useLiveQuery(() => db.settings.get('activeRoutineId'))
-  const exercises = useLiveQuery(() => db.exercises.toArray())
   const profile = useLiveQuery(() => db.profile.get(1))
   const activeId = activeRow?.value as number | undefined
 
@@ -21,21 +22,12 @@ export default function PlansHome({ onStart, onEdit }: {
   const days = selDays ?? Math.min(6, Math.max(2, profile?.daysGym ?? 3))
   const suggestions = suggestPlans(days, profile?.expLevel ?? 'new')
 
-  const nameOf = (slug: string): string => exercises?.find(e => e.slug === slug)?.name ?? slug
-  const active = routines?.find(r => r.id === activeId)
-  const today = jsDayToWeekday(new Date().getDay())
-  const todayDay = active?.days.find(d => d.weekday === today)
-
   const setActive = async (id: number) => { await db.settings.put({ key: 'activeRoutineId', value: id }) }
   const createNew = async () => {
     const name = window.prompt('Tên kế hoạch:', 'Kế hoạch của tôi')
     if (!name?.trim()) return
     const id = await db.routines.add({ name: name.trim(), source: 'custom', days: [], createdAt: new Date() })
     onEdit(id)
-  }
-  const startToday = () => {
-    if (!active || !todayDay || todayDay.slugs.length === 0) return
-    onStart(todayDay.slugs, `${active.name} · ${weekdayLabel(today)}`)
   }
   /** Dùng lịch gợi ý: có sẵn thì kích hoạt, chưa có thì tạo từ template rồi kích hoạt. */
   const useSuggestion = async (name: string) => {
@@ -57,22 +49,7 @@ export default function PlansHome({ onStart, onEdit }: {
         <h1 className="h">Tuần này đi theo lịch.</h1>
       </div>
 
-      <div className="card">
-        <div className="eyebrow">HÔM NAY · {weekdayShort(today).toUpperCase()}</div>
-        {active && todayDay && todayDay.slugs.length > 0 ? (
-          <>
-            <h2 className="h" style={{ marginTop: 4 }}>{active.name}</h2>
-            <div className="meta">{todayDay.slugs.map(nameOf).join(' · ')}</div>
-            <button className="btn" style={{ marginTop: 12 }} onClick={startToday}>TẬP BUỔI NÀY</button>
-          </>
-        ) : (
-          <div className="meta" style={{ marginTop: 6 }}>
-            {active
-              ? `Hôm nay ${weekdayShort(today)} là ngày nghỉ theo ${active.name}. Muốn tập tự do thì sang Thư viện.`
-              : 'Chưa chọn kế hoạch hoạt động — chọn một kế hoạch bên dưới hoặc tập tự do ở Thư viện.'}
-          </div>
-        )}
-      </div>
+      <TodayPlanCard onStart={onStart} />
 
       <div className="card">
         <div className="eyebrow">GỢI Ý CHO BẠN</div>
@@ -136,7 +113,8 @@ export default function PlansHome({ onStart, onEdit }: {
             </div>
           )
         })}
-        <button className="btn ghost" style={{ marginTop: 12 }} onClick={createNew}>+ Kế hoạch mới</button>
+        <button className="btn" style={{ marginTop: 12 }} onClick={onOpenPlanner}>LẬP LỊCH TUẦN MỚI (CÓ GỢI Ý)</button>
+        <button className="btn ghost" style={{ marginTop: 10 }} onClick={createNew}>+ Kế hoạch trống</button>
       </div>
 
       <p className="note">

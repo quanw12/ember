@@ -1,5 +1,6 @@
 import { db, todayStr } from '../db'
 import { jsDayToWeekday } from '../data/routines.seed'
+import { isWeekend, plannedThisWeek } from './gym'
 
 export interface ReminderCfg {
   enabled: boolean
@@ -35,8 +36,14 @@ export async function tickReminder(): Promise<void> {
   let body = 'Giữ lửa — mở EMBER và bắt đầu thôi.'
   if (slugs.length > 0 && routine) {
     const exercises = await db.exercises.toArray()
-    const nameOf = new Map(exercises.map(e => [e.slug, e.name]))
+    const nameOf = new Map(exercises.map(e => [e.slug, e.nameEn || e.name]))
     body = `Hôm nay: ${routine.name} — ${slugs.map(s => nameOf.get(s) ?? s).join(', ')}`
+  }
+
+  // Cuối tuần mà chưa lập lịch tuần mới thì ưu tiên nhắc việc đó trước
+  const plannedRow = await db.settings.get('weeklyPlannedOn')
+  if (isWeekend(now) && !plannedThisWeek(plannedRow?.value as string | undefined)) {
+    body = 'Cuối tuần rồi — lên lịch tuần mới: chọn ngày + nhóm cơ, EMBER gợi ý bài cho bạn chọn.'
   }
   try {
     new Notification('EMBER — giờ tập', { body })

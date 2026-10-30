@@ -3,8 +3,10 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db, todayStr, getActiveSlot, activateSlotDb, migrateLegacyIfNeeded } from './db'
 import { EXERCISE_SEED, SEED_REV } from './data/exercises.seed'
 import { importLibrary, LIB_REV } from './data/library-import'
+import { ensureTemplatesFor } from './data/routines.seed'
 import { tickReminder } from './lib/reminders'
-import { FlameIcon, DumbbellIcon, RouteIcon, TrendIcon, UserIcon } from './components/icons'
+import { FlameIcon, DumbbellIcon, RouteIcon, TrendIcon, UserIcon, ChatIcon } from './components/icons'
+import CoachChat from './components/CoachChat'
 import FirstRun from './views/FirstRun'
 import Onboarding from './views/Onboarding'
 import Today from './views/Today'
@@ -45,6 +47,7 @@ export default function App() {
 function AppShell({ onUsersChanged }: { onUsersChanged: () => void }) {
   const [tab, setTab] = useState<Tab>('today')
   const [gymInit, setGymInit] = useState<GymView | undefined>()
+  const [coachOpen, setCoachOpen] = useState(false)
   const seedOnce = useRef<Promise<void> | null>(null)
   // null = đã nạp xong và chưa có profile (hiện onboarding); undefined = đang nạp
   const profile = useLiveQuery(async () => (await db.profile.get(1)) ?? null)
@@ -52,6 +55,11 @@ function AppShell({ onUsersChanged }: { onUsersChanged: () => void }) {
   const startSession = async (slugs: string[], name: string) => {
     const id = await db.sessions.add({ date: todayStr(), startedAt: new Date(), name, slugs })
     setGymInit({ kind: 'session', id })
+    setTab('gym')
+  }
+
+  const openPlanner = () => {
+    setGymInit({ kind: 'weekly' })
     setTab('gym')
   }
 
@@ -92,6 +100,18 @@ function AppShell({ onUsersChanged }: { onUsersChanged: () => void }) {
     return () => clearInterval(t)
   }, [])
 
+  // Hồ sơ có sẵn (cập nhật app): đợi seed thư viện xong rồi tạo template —
+  // hồ sơ nữ được thêm template thiên về mông/chân. Idempotent theo rev.
+  useEffect(() => {
+    if (!profile) return
+    void (async () => {
+      try {
+        await seedOnce.current
+        await ensureTemplatesFor(profile.equipment, profile.sex)
+      } catch { /* lỗi DB — thử lại ở lần mở sau */ }
+    })()
+  }, [profile])
+
   if (profile === undefined) return null // Dexie đang nạp
 
   if (!profile) return <Onboarding />
@@ -99,11 +119,13 @@ function AppShell({ onUsersChanged }: { onUsersChanged: () => void }) {
   return (
     <>
       <div className="app">
-        {tab === 'today' && <Today onGoGym={() => setTab('gym')} onQuickStart={startSession} />}
-        {tab === 'gym' && <Gym initial={gymInit} startSession={startSession} />}
-        {tab === 'run' && <Run />}
-        {tab === 'progress' && <Progress />}
-        {tab === 'profile' && <ProfileView onUsersChanged={onUsersChanged} />}
+        <div key={tab} className="anim-view anim-stagger">
+          {tab === 'today' && <Today onGoGym={() => setTab('gym')} onQuickStart={startSession} onOpenPlanner={openPlanner} />}
+          {tab === 'gym' && <Gym initial={gymInit} startSession={startSession} />}
+          {tab === 'run' && <Run />}
+          {tab === 'progress' && <Progress />}
+          {tab === 'profile' && <ProfileView onUsersChanged={onUsersChanged} />}
+        </div>
       </div>
       <nav className="tabbar" aria-label="Điều hướng chính">
         <div className="inner">
@@ -115,6 +137,10 @@ function AppShell({ onUsersChanged }: { onUsersChanged: () => void }) {
           ))}
         </div>
       </nav>
+      {coachOpen && <CoachChat onClose={() => setCoachOpen(false)} />}
+      <button type="button" className="coach-fab" onClick={() => setCoachOpen(true)} aria-label="Mở Coach">
+        <ChatIcon />
+      </button>
     </>
   )
 }

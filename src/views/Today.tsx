@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, todayStr, movingAvg, getActiveSlot } from '../db'
-import { macroPlan, GOAL_OPTIONS, toDisplayW, type Unit } from '../lib/calc'
-import { weekdayShort, jsDayToWeekday } from '../data/routines.seed'
-import { FlameIcon, DumbbellIcon } from '../components/icons'
+import { macroPlan, GOAL_OPTIONS, toDisplayW, cycleInfo, PHASE_LABEL, type Unit } from '../lib/calc'
+import { streakOf, workoutDates, isWeekend, weekKey, plannedThisWeek, localIso } from '../lib/gym'
+import { FlameIcon } from '../components/icons'
 import TargetPhoto from '../components/TargetPhoto'
+import TodayPlanCard from '../components/TodayPlanCard'
 
 function greeting(name?: string): string {
   const h = new Date().getHours()
@@ -14,7 +15,11 @@ function greeting(name?: string): string {
 
 const DAYS = ['Chủ nhật', 'Thứ hai', 'Thứ ba', 'Thứ tư', 'Thứ năm', 'Thứ sáu', 'Thứ bảy']
 
-export default function Today({ onGoGym, onQuickStart }: { onGoGym: () => void; onQuickStart: (slugs: string[], name: string) => void }) {
+export default function Today({ onGoGym, onQuickStart, onOpenPlanner }: {
+  onGoGym: () => void
+  onQuickStart: (slugs: string[], name: string) => void
+  onOpenPlanner: () => void
+}) {
   const today = todayStr()
   const profile = useLiveQuery(() => db.profile.get(1))
   const bodyLogs = useLiveQuery(() => db.bodyLogs.orderBy('date').toArray())
@@ -22,11 +27,15 @@ export default function Today({ onGoGym, onQuickStart }: { onGoGym: () => void; 
   const todaySleep = useLiveQuery(() => db.sleepLogs.where('date').equals(today).first())
   const sessions = useLiveQuery(() => db.sessions.toArray())
   const checkins = useLiveQuery(() => db.checkins.toArray())
-  const activeRow = useLiveQuery(() => db.settings.get('activeRoutineId'))
-  const routines = useLiveQuery(() => db.routines.toArray())
-  const exercises = useLiveQuery(() => db.exercises.toArray())
+  const runs = useLiveQuery(() => db.runs.toArray())
+  const cycleQ = useLiveQuery(() => db.cycleLogs.orderBy('date').reverse().toArray())
   const unitRow = useLiveQuery(() => db.settings.get('unit'))
   const unit = (unitRow?.value as Unit | undefined) ?? 'kg'
+  const plannedRow = useLiveQuery(() => db.settings.get('weeklyPlannedOn'))
+  const nudgeOffRow = useLiveQuery(() => db.settings.get('weeklyNudgeOff'))
+  const showWeeklyNudge = isWeekend()
+    && !plannedThisWeek(plannedRow?.value as string | undefined)
+    && (nudgeOffRow?.value as string | undefined) !== weekKey()
 
   const [kcal, setKcal] = useState('')
   const [protein, setProtein] = useState('')
@@ -58,33 +67,21 @@ export default function Today({ onGoGym, onQuickStart }: { onGoGym: () => void; 
     }
   }
 
-  // Streak: ngày liên tục có lửa = có buổi tập HOẶC có check-in (thắp lửa không cần ảnh)
-  const litDates = new Set<string>((sessions ?? []).map(s => s.date))
-  for (const c of checkins ?? []) litDates.add(c.date)
-  const checkedInToday = litDates.has(today)
-  let streak = 0
-  const cursor = new Date()
-  while (litDates.has(cursor.toISOString().slice(0, 10))) {
-    streak++
-    cursor.setDate(cursor.getDate() - 1)
-  }
+  // Streak/lửa: ngày có buổi tập hoàn thành, buổi chạy, HOẶC check-in thắp lửa (không cần ảnh)
+  const litDates = workoutDates(sessions, runs, checkins)
+  const checkedInToday = (checkins ?? []).some(c => c.date === today)
+  const streak = streakOf(litDates, today)
 
   // Dải 7 ngày gần nhất cho card check-in (đậm dần theo lửa)
   const last7: { date: string; lit: boolean }[] = []
   for (let i = 6; i >= 0; i--) {
     const d = new Date()
     d.setDate(d.getDate() - i)
-    const ds = d.toISOString().slice(0, 10)
+    const ds = localIso(d)
     last7.push({ date: ds, lit: litDates.has(ds) })
   }
 
   const goalLabel = GOAL_OPTIONS.find(g => g.id === profile.goal)?.label ?? profile.goal
-
-  const activeRoutine = routines?.find(r => r.id === (activeRow?.value as number | undefined))
-  const weekday = jsDayToWeekday(new Date().getDay())
-  const todayPlanDay = activeRoutine?.days.find(d => d.weekday === weekday)
-  const planSlugs = todayPlanDay?.slugs ?? []
-  const nameOf = (slug: string): string => exercises?.find(e => e.slug === slug)?.name ?? slug
 
   const saveQuickLog = async () => {
     const k = Number(kcal), p = Number(protein), s = Number(sleep)
@@ -168,29 +165,33 @@ export default function Today({ onGoGym, onQuickStart }: { onGoGym: () => void; 
         {profile.targetPhoto && <TargetPhoto blob={profile.targetPhoto} />}
       </div>
 
-      {planSlugs.length > 0 && activeRoutine ? (
-        <div className="card">
-          <div className="eyebrow">GYM · {weekdayShort(weekday).toUpperCase()} · {activeRoutine.name.toUpperCase()}</div>
-          <h2 className="h" style={{ marginTop: 4 }}>Hôm nay: {planSlugs.length} bài</h2>
-          <div className="meta">{planSlugs.map(nameOf).join(' · ')}</div>
-          <button className="btn" style={{ marginTop: 12 }} onClick={() => onQuickStart(planSlugs, `${activeRoutine.name} · ${weekdayShort(weekday)}`)}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
-              <DumbbellIcon /> BẮT ĐẦU TẬP
-            </span>
-          </button>
-        </div>
-      ) : (
-        <div className="card">
-          <div className="eyebrow">GYM · HÔM NAY</div>
-          <h2 className="h" style={{ marginTop: 4 }}>Buổi tập đang trên đường về.</h2>
-          <div className="meta">Chọn kế hoạch ở tab Gym để Hôm nay tự chỉ bài — hoặc tập tự do ngay.</div>
-          <button className="btn" style={{ marginTop: 12 }} onClick={onGoGym}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
-              <DumbbellIcon /> BẮT ĐẦU TẬP
-            </span>
+      {showWeeklyNudge && (
+        <div className="card" style={{ borderColor: 'var(--red-deep)' }}>
+          <div className="eyebrow">CUỐI TUẦN · LÊN LỊCH</div>
+          <h2 className="h" style={{ marginTop: 4 }}>Tuần tới muốn tập những ngày nào, nhóm cơ nào?</h2>
+          <div className="meta">Chọn ngày + nhóm cơ trên bản đồ cơ thể, hệ thống gợi ý bài để bạn tự chọn — 2 phút là xong.</div>
+          <button className="btn" style={{ marginTop: 12 }} onClick={onOpenPlanner}>LẬP LỊCH TUẦN MỚI</button>
+          <button type="button" onClick={async () => { await db.settings.put({ key: 'weeklyNudgeOff', value: weekKey() }) }}
+            style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: 12, marginTop: 10 }}>
+            Để sau — tuần sau nhắc lại
           </button>
         </div>
       )}
+
+      <TodayPlanCard onStart={onQuickStart} onGoPlans={onGoGym} />
+
+      {profile.sex === 'female' && cycleQ && (() => {
+        const lastStart = cycleQ.find(c => c.kind === 'start')?.date
+        if (!lastStart) return null
+        const ci = cycleInfo(lastStart, profile.cycleLenDays ?? 28)
+        return (
+          <div className="card">
+            <div className="eyebrow">CHU KỲ · {PHASE_LABEL[ci.phase].toUpperCase()}</div>
+            <h2 className="h" style={{ marginTop: 4 }}>Ngày {ci.day} chu kỳ</h2>
+            <div className="meta">{ci.tip}</div>
+          </div>
+        )
+      })()}
 
       <div className="card">
         <div className="eyebrow">NHẬT KÝ NHANH · 10 GIÂY</div>

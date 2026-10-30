@@ -7,10 +7,12 @@ const THUMB_LIMIT = 150
 
 const muscleLabel = (id: string): string => MUSCLES.find(m => m.id === id)?.label ?? id
 
+interface PickableExercise { slug: string; name: string; nameEn: string; muscle: string; keywords: string[] }
+
 /** Bảng chọn bài tập dùng chung: thêm bài vào buổi tập hoặc vào ngày trong kế hoạch.
- *  Panel rộng, mỗi bài kèm mô hình cơ mini — nhóm cơ của bài sáng đỏ. */
+ *  Panel rộng, mỗi bài kèm mô hình cơ mini — nhóm cơ của bài sáng đỏ. Tên tiếng Anh là chính. */
 export default function ExercisePicker({ exercises, picked, onPick, onClose }: {
-  exercises: { slug: string; name: string; muscle: string; keywords: string[] }[]
+  exercises: PickableExercise[]
   picked: string[]
   onPick: (slug: string) => void
   onClose: () => void
@@ -20,8 +22,8 @@ export default function ExercisePicker({ exercises, picked, onPick, onClose }: {
   const term = q.trim().toLowerCase()
   const list = exercises
     .filter(e => (muscle ? e.muscle === muscle : true))
-    .filter(e => (term ? e.name.toLowerCase().includes(term) || e.keywords.some(k => k.includes(term)) : true))
-    .sort((a, b) => a.name.localeCompare(b.name, 'vi'))
+    .filter(e => (term ? e.nameEn.toLowerCase().includes(term) || e.name.toLowerCase().includes(term) || e.keywords.some(k => k.includes(term)) : true))
+    .sort((a, b) => a.nameEn.localeCompare(b.nameEn, 'en'))
   const showThumbs = list.length <= THUMB_LIMIT
 
   return (
@@ -46,9 +48,11 @@ export default function ExercisePicker({ exercises, picked, onPick, onClose }: {
               </span>
               <span style={{ flex: 1, minWidth: 0 }}>
                 <b style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {e.name}{picked.includes(e.slug) ? ' — đã chọn' : ''}
+                  {e.nameEn}{picked.includes(e.slug) ? ' — đã chọn' : ''}
                 </b>
-                <span style={{ color: 'var(--text-2)', fontSize: 12 }}>{muscleLabel(e.muscle)}</span>
+                <span style={{ color: 'var(--text-2)', fontSize: 12 }}>
+                  {e.nameEn !== e.name ? `${e.name} · ` : ''}{muscleLabel(e.muscle)}
+                </span>
               </span>
             </button>
           ))}
