@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { db, type Profile } from '../db'
 import { ACTIVITY_OPTIONS, GOAL_OPTIONS, macroPlan, fmtWeeks } from '../lib/calc'
 import { ensureTemplatesFor } from '../data/routines.seed'
@@ -21,9 +21,27 @@ const INITIAL: Draft = {
   targetWeightKg: undefined
 }
 
-const num = (v: string): number | undefined => {
-  const n = Number(v)
-  return Number.isFinite(n) && n > 0 ? n : undefined
+/**
+ * Ô nhập số giữ chuỗi thô khi đang gõ: xoá hết thì ô trống thật thay vì nhảy về 0,
+ * gõ tiếp không bị dính "0" phía trước (bug cũ: Number('') = 0 → value 0 hiển thị lại).
+ */
+function NumInput({ value, onCommit, ...rest }: {
+  value: number | undefined
+  onCommit: (n: number | undefined) => void
+} & Omit<React.InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange'>) {
+  const [raw, setRaw] = useState(value == null ? '' : String(value))
+  // Giá trị ngoài đổi khác chỗ đang hiển thị (reset, clamp) → đồng bộ lại chuỗi
+  useEffect(() => {
+    const shown = raw === '' ? undefined : Number(raw)
+    if (shown !== value) setRaw(value == null ? '' : String(value))
+  }, [value, raw])
+  const commit = (s: string) => {
+    setRaw(s)
+    const n = s.trim() === '' ? undefined : Number(s)
+    onCommit(n != null && Number.isFinite(n) ? n : undefined)
+    if (/^-?0\d/.test(s)) setRaw(String(Number(s))) // "05" → "5"
+  }
+  return <input {...rest} type="number" inputMode="decimal" value={raw} onChange={e => commit(e.target.value)} />
 }
 
 export default function Onboarding() {
@@ -71,11 +89,11 @@ export default function Onboarding() {
               </button>
             </div>
             <label className="f" htmlFor="age">Tuổi</label>
-            <input id="age" type="number" inputMode="numeric" value={d.age} onChange={e => set('age', Number(e.target.value))} />
+            <NumInput id="age" min={13} max={90} value={d.age} onCommit={n => set('age', n ?? 0)} />
             <label className="f" htmlFor="h">Chiều cao (cm)</label>
-            <input id="h" type="number" inputMode="numeric" value={d.heightCm} onChange={e => set('heightCm', Number(e.target.value))} />
+            <NumInput id="h" min={120} max={230} value={d.heightCm} onCommit={n => set('heightCm', n ?? 0)} />
             <label className="f" htmlFor="w">Cân nặng hiện tại (kg)</label>
-            <input id="w" type="number" inputMode="decimal" step="0.1" value={d.weightKg} onChange={e => set('weightKg', Number(e.target.value))} />
+            <NumInput id="w" min={30} max={250} step="0.1" value={d.weightKg} onCommit={n => set('weightKg', n ?? 0)} />
           </div>
           <div className="spacer" />
           <button className="btn" disabled={!valid} onClick={() => setStep(1)}>Tiếp tục</button>
@@ -100,9 +118,9 @@ export default function Onboarding() {
               ))}
             </div>
             <label className="f" htmlFor="dg">Số buổi gym mỗi tuần</label>
-            <input id="dg" type="number" inputMode="numeric" min={1} max={7} value={d.daysGym} onChange={e => set('daysGym', Number(e.target.value))} />
+            <NumInput id="dg" min={0} max={7} value={d.daysGym} onCommit={n => set('daysGym', Math.min(7, Math.max(0, Math.round(n ?? 0))))} />
             <label className="f" htmlFor="dr">Số buổi chạy mỗi tuần</label>
-            <input id="dr" type="number" inputMode="numeric" min={0} max={7} value={d.daysRun} onChange={e => set('daysRun', Number(e.target.value))} />
+            <NumInput id="dr" min={0} max={7} value={d.daysRun} onCommit={n => set('daysRun', Math.min(7, Math.max(0, Math.round(n ?? 0))))} />
           </div>
           <div className="spacer" />
           <button className="btn" onClick={() => setStep(2)}>Tiếp tục</button>
@@ -123,7 +141,8 @@ export default function Onboarding() {
               ))}
             </div>
             <label className="f" htmlFor="tw">Cân nặng mục tiêu (kg) — tùy chọn</label>
-            <input id="tw" type="number" inputMode="decimal" step="0.1" placeholder="Ví dụ 60" value={d.targetWeightKg ?? ''} onChange={e => set('targetWeightKg', num(e.target.value))} />
+            <NumInput id="tw" min={30} max={250} step="0.1" placeholder="Ví dụ 60" value={d.targetWeightKg}
+              onCommit={n => set('targetWeightKg', n != null && n > 0 ? n : undefined)} />
             <label className="f" htmlFor="tp">Ảnh "body mong muốn" — tùy chọn</label>
             {targetPhoto && (
               <div className="row" style={{ marginTop: 6 }}>
