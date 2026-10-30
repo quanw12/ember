@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { db, type Profile } from '../db'
+import { db, todayStr, type Profile } from '../db'
 import { ACTIVITY_OPTIONS, GOAL_OPTIONS, macroPlan, fmtWeeks } from '../lib/calc'
 import { ensureTemplatesFor } from '../data/routines.seed'
 import { compressImage } from '../lib/image'
@@ -83,7 +83,7 @@ export default function Onboarding() {
 
   const save = async () => {
     await db.profile.put({ ...d, id: 1, targetPhoto: targetPhoto ?? undefined, createdAt: new Date(), updatedAt: new Date() })
-    await db.bodyLogs.add({ date: new Date().toISOString().slice(0, 10), weightKg: d.weightKg })
+    await db.bodyLogs.add({ date: todayStr(), weightKg: d.weightKg })
     await ensureTemplatesFor(d.equipment, d.sex)
   }
 

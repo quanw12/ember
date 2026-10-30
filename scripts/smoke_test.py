@@ -15,11 +15,16 @@ def ok(label: str, cond: bool, detail: str = '') -> None:
 
 
 def expect_text(page, text: str, label: str) -> None:
-    page.wait_for_timeout(400)
-    try:
-        visible = page.locator(f'text={text}').first.is_visible()
-    except Exception:
-        visible = False
+    """Chờ tối đa ~3s cho text xuất hiện — render có thể chậm sau khi chuyển hồ sơ."""
+    visible = False
+    for _ in range(12):
+        try:
+            if page.locator(f'text={text}').first.is_visible():
+                visible = True
+                break
+        except Exception:
+            pass
+        page.wait_for_timeout(250)
     ok(label, visible, f'— không thấy "{text}"')
 
 
@@ -50,6 +55,12 @@ with sync_playwright() as p:
     page.wait_for_load_state('networkidle')
     expect_text(page, 'Quân', 'Hôm nay: lời chào có tên Quân')
     expect_text(page, '75', 'Hôm nay: mục tiêu 75 kg')
+
+    # 2b) Check-in hằng ngày: bấm THẮP LỬA — không cần chụp ảnh
+    page.click('button:has-text("THẮP LỬA")')
+    page.wait_for_timeout(500)
+    expect_text(page, 'Lửa đang cháy', 'Check-in: THẮP LỬA 1 bấm → lửa đang cháy')
+    expect_text(page, 'Đã check in', 'Check-in: trạng thái đã check in hôm nay')
 
     # 3) Tiến trình: ghi cân 71
     page.click('button:has-text("Tiến trình")')
@@ -99,6 +110,22 @@ with sync_playwright() as p:
     page.wait_for_timeout(600)
     expect_text(page, 'Full Body 3 buổi', 'Gym: template Full Body có sẵn')
     expect_text(page, 'PPL 6 buổi', 'Gym: template PPL có sẵn')
+
+    # 7b) RCM kế hoạch: chọn 5 buổi → gợi ý PPLUL, kích hoạt 1 chạm
+    page.click('button:has-text("5 buổi")')
+    page.wait_for_timeout(400)
+    expect_text(page, 'PPLUL 5 buổi', 'RCM: chọn 5 buổi → gợi ý PPLUL')
+    # PPLUL đã có sẵn sau seed rev 4 → nút "Dùng"; nếu chưa có thì là "Tạo & dùng"
+    page.locator('div.kv', has_text='PPLUL 5 buổi').first.locator('button').first.click()
+    page.wait_for_timeout(700)
+    expect_text(page, 'ĐANG DÙNG', 'RCM: PPLUL được kích hoạt 1 chạm')
+
+    # 7c) Chi tiết bài tập: card nhóm cơ + mô hình người SVG
+    page.click('button:has-text("Thư viện")')
+    page.wait_for_timeout(600)
+    page.click('button:has-text("Bench Press")')
+    page.wait_for_timeout(700)
+    expect_text(page, 'NHÓM CƠ ĐÍCH', 'Chi tiết bài: card nhóm cơ với mô hình SVG')
 
     # 8) Bấm đủ các tab còn lại — trước đây tab Chạy sập vì orderBy cột không index
     page.click('button:has-text("Chạy")')

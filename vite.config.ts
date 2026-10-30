@@ -26,10 +26,21 @@ export default defineConfig({
         ]
       },
       workbox: {
-        // Gom cả GIF bài tập, font, icon vào precache — dùng offline trọn vẹn
-        globPatterns: ['**/*.{js,css,html,gif,png,svg,ico,woff2,json}'],
+        // GIF minh họa (11MB) KHÔNG precache — lần đầu mở app phải tải 12MB
+        // mới offline-ready là quá nặng trên 4G. Gif tải theo nhu cầu qua
+        // runtime cache 'exercise-gifs' (CacheFirst) bên dưới.
+        globPatterns: ['**/*.{js,css,html,png,svg,ico,woff2,json}'],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         runtimeCaching: [
+          {
+            urlPattern: /\/gifs\/[^/]+\.gif$/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'exercise-gifs',
+              expiration: { maxEntries: 60, maxAgeSeconds: 60 * 60 * 24 * 90 },
+              cacheableResponse: { statuses: [200] }
+            }
+          },
           {
             urlPattern: /^https:\/\/cdn\.jsdelivr\.net\/.*/i,
             handler: 'CacheFirst',

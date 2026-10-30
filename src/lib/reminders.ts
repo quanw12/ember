@@ -1,6 +1,6 @@
 import { db, todayStr } from '../db'
 import { jsDayToWeekday } from '../data/routines.seed'
-import { isWeekend, plannedThisWeek } from './gym'
+import { isWeekend, plannedThisWeek, workoutDates } from './gym'
 
 export interface ReminderCfg {
   enabled: boolean
@@ -25,8 +25,13 @@ export async function tickReminder(): Promise<void> {
   const now = new Date()
   if (now.getHours() !== cfg.hour || now.getMinutes() !== cfg.minute) return
 
-  const done = (await db.sessions.where('date').equals(today).toArray()).some(s => s.endedAt != null)
-  if (done) { firedOn = today; return }
+  // "Im khi đã có lửa hôm nay": buổi gym hoàn thành, buổi chạy, hay chỉ check-in thắp lửa
+  const [sessionsToday, runsToday, checkinsToday] = await Promise.all([
+    db.sessions.where('date').equals(today).toArray(),
+    db.runs.where('date').equals(today).toArray(),
+    db.checkins.where('date').equals(today).toArray()
+  ])
+  if (workoutDates(sessionsToday, runsToday, checkinsToday).has(today)) { firedOn = today; return }
 
   const activeRow = await db.settings.get('activeRoutineId')
   const routine = activeRow ? await db.routines.get(activeRow.value as number) : undefined
