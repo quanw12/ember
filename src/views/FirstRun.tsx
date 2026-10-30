@@ -20,7 +20,7 @@ export default function FirstRun({ onDone }: { onDone: () => void }) {
       <div className="meta">Keep the fire · mỗi người một kho dữ liệu riêng trên máy này</div>
       <div style={{ maxWidth: 320, margin: '26px auto 0', textAlign: 'left' }}>
         <label className="f" htmlFor="fname">Tên của bạn</label>
-        <input id="fname" type="text" placeholder="Ví dụ: Quân" value={name}
+        <input id="fname" type="text" placeholder="Tên của bạn" value={name}
           onChange={e => setName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') create() }} />
         <button className="btn" style={{ marginTop: 14 }} disabled={!name.trim()} onClick={create}>TẠO HỒ SƠ</button>
         <p className="note" style={{ textAlign: 'center' }}>
