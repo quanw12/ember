@@ -1,4 +1,4 @@
-import { db, type Profile, type RoutineDay } from '../db'
+import { db, type Exercise, type Profile, type RoutineDay } from '../db'
 
 export const WEEKDAYS = ['Thứ hai', 'Thứ ba', 'Thứ tư', 'Thứ năm', 'Thứ sáu', 'Thứ bảy', 'Chủ nhật']
 export const WEEKDAYS_SHORT = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
@@ -9,18 +9,33 @@ export const weekdayShort = (w: number): string => WEEKDAYS_SHORT[w - 1] ?? `N${
 export const jsDayToWeekday = (js: number): number => (js === 0 ? 7 : js)
 
 interface TemplateDay { weekday: number; slugs: string[] }
-interface Template { name: string; days: TemplateDay[] }
+export interface Template { name: string; days: TemplateDay[] }
 
-/** Template dựng theo chuẩn phổ biến: StrongLifts/Starting Strength (full body), Upper/Lower cổ điển, PPL, PHUL. */
-export const ROUTINES_SEED_REV = 2
+/** Template dựng theo chuẩn phổ biến: StrongLifts/Starting Strength (full body), Upper/Lower cổ điển, PPL, PHUL, PPLUL. */
+export const ROUTINES_SEED_REV = 3
 
 export const ROUTINE_TEMPLATES: Template[] = [
+  {
+    name: 'Full Body 2 buổi',
+    days: [
+      { weekday: 2, slugs: ['back-squat', 'bench-press', 'barbell-row', 'plank'] },
+      { weekday: 5, slugs: ['deadlift', 'ohp', 'lat-pulldown', 'hanging-leg-raise'] }
+    ]
+  },
   {
     name: 'Full Body 3 buổi',
     days: [
       { weekday: 2, slugs: ['back-squat', 'bench-press', 'barbell-row', 'plank'] },
       { weekday: 4, slugs: ['deadlift', 'ohp', 'lat-pulldown', 'hanging-leg-raise'] },
       { weekday: 6, slugs: ['leg-press', 'incline-db-press', 'one-arm-row', 'cable-crunch'] }
+    ]
+  },
+  {
+    name: 'PPL 3 buổi',
+    days: [
+      { weekday: 2, slugs: ['bench-press', 'incline-db-press', 'seated-db-press', 'lateral-raise', 'triceps-pushdown'] },
+      { weekday: 4, slugs: ['lat-pulldown', 'barbell-row', 'face-pull', 'barbell-curl', 'cable-curl'] },
+      { weekday: 6, slugs: ['back-squat', 'rdl', 'leg-extension', 'leg-curl', 'standing-calf'] }
     ]
   },
   {
@@ -33,6 +48,25 @@ export const ROUTINE_TEMPLATES: Template[] = [
     ]
   },
   {
+    name: 'PHUL 4 buổi (Power + Hypertrophy)',
+    days: [
+      { weekday: 2, slugs: ['bench-press', 'barbell-row', 'ohp', 'barbell-curl', 'skull-crusher'] },
+      { weekday: 3, slugs: ['back-squat', 'deadlift', 'leg-press', 'leg-curl', 'standing-calf'] },
+      { weekday: 5, slugs: ['incline-db-press', 'one-arm-row', 'lateral-raise', 'cable-curl', 'triceps-pushdown'] },
+      { weekday: 6, slugs: ['leg-press', 'walking-lunge', 'leg-curl', 'seated-calf', 'cable-crunch'] }
+    ]
+  },
+  {
+    name: 'PPLUL 5 buổi',
+    days: [
+      { weekday: 2, slugs: ['bench-press', 'incline-db-press', 'seated-db-press', 'lateral-raise', 'triceps-pushdown'] },
+      { weekday: 3, slugs: ['lat-pulldown', 'barbell-row', 'face-pull', 'barbell-curl', 'cable-curl'] },
+      { weekday: 4, slugs: ['back-squat', 'rdl', 'leg-extension', 'leg-curl', 'standing-calf'] },
+      { weekday: 6, slugs: ['incline-db-press', 'lat-pulldown', 'lateral-raise', 'hammer-curl', 'skull-crusher'] },
+      { weekday: 7, slugs: ['leg-press', 'walking-lunge', 'leg-curl', 'seated-calf', 'cable-crunch'] }
+    ]
+  },
+  {
     name: 'PPL 6 buổi',
     days: [
       { weekday: 2, slugs: ['bench-press', 'incline-db-press', 'seated-db-press', 'lateral-raise', 'triceps-pushdown'] },
@@ -42,15 +76,6 @@ export const ROUTINE_TEMPLATES: Template[] = [
       { weekday: 6, slugs: ['lat-pulldown', 'barbell-row', 'face-pull', 'barbell-curl', 'cable-curl'] },
       { weekday: 7, slugs: ['back-squat', 'rdl', 'leg-extension', 'leg-curl', 'standing-calf'] }
     ]
-  },
-  {
-    name: 'PHUL 4 buổi (Power + Hypertrophy)',
-    days: [
-      { weekday: 2, slugs: ['bench-press', 'barbell-row', 'ohp', 'barbell-curl', 'skull-crusher'] },
-      { weekday: 3, slugs: ['back-squat', 'deadlift', 'leg-press', 'leg-curl', 'standing-calf'] },
-      { weekday: 5, slugs: ['incline-db-press', 'one-arm-row', 'lateral-raise', 'cable-curl', 'triceps-pushdown'] },
-      { weekday: 6, slugs: ['leg-press', 'walking-lunge', 'leg-curl', 'seated-calf', 'cable-crunch'] }
-    ]
   }
 ]
 
@@ -58,6 +83,27 @@ const ALLOWED_EQUIPMENT: Record<Profile['equipment'], string[]> = {
   full: ['barbell', 'dumbbell', 'machine', 'cable', 'bodyweight', 'other'],
   home: ['dumbbell', 'bodyweight', 'other'],
   bodyweight: ['bodyweight']
+}
+
+/** Lọc bài của template theo dụng cụ cho phép — ngày rơi hết bài sẽ bị bỏ. */
+export function filterTemplate(t: Template, bySlug: Map<string, Pick<Exercise, 'slug' | 'equipment'>>, equipment: Profile['equipment']): RoutineDay[] {
+  const allowed = new Set(ALLOWED_EQUIPMENT[equipment] ?? ALLOWED_EQUIPMENT.full)
+  return t.days
+    .map(d => ({ weekday: d.weekday, slugs: d.slugs.filter(s => { const ex = bySlug.get(s); return ex != null && allowed.has(ex.equipment) }) }))
+    .filter(d => d.slugs.length > 0)
+}
+
+/**
+ * Tạo routine mới từ template (lọc theo dụng cụ hồ sơ). Không nhân bản nếu tên đã tồn tại.
+ * Trả về id routine, hoặc null nếu thiếu template/bài tập.
+ */
+export async function createRoutineFromTemplate(name: string, equipment: Profile['equipment']): Promise<number | null> {
+  const t = ROUTINE_TEMPLATES.find(x => x.name === name)
+  if (!t) return null
+  const bySlug = new Map((await db.exercises.toArray()).map(e => [e.slug, e]))
+  const days = filterTemplate(t, bySlug, equipment)
+  if (days.length === 0) return null
+  return db.routines.add({ name: t.name, source: 'template', days, createdAt: new Date() })
 }
 
 /**
@@ -71,13 +117,10 @@ export async function ensureTemplatesFor(equipment: Profile['equipment']): Promi
   const exercises = await db.exercises.toArray()
   if (exercises.length === 0) return // thư viện chưa nạp xong — thử lại ở lần mở sau, đừng đốt cờ
   const bySlug = new Map(exercises.map(e => [e.slug, e]))
-  const allowed = new Set(ALLOWED_EQUIPMENT[equipment] ?? ALLOWED_EQUIPMENT.full)
   const existingNames = new Set((await db.routines.toArray()).map(r => r.name))
   for (const t of ROUTINE_TEMPLATES) {
     if (existingNames.has(t.name)) continue
-    const days: RoutineDay[] = t.days
-      .map(d => ({ weekday: d.weekday, slugs: d.slugs.filter(s => { const ex = bySlug.get(s); return ex != null && allowed.has(ex.equipment) }) }))
-      .filter(d => d.slugs.length > 0)
+    const days = filterTemplate(t, bySlug, equipment)
     if (days.length > 0) {
       await db.routines.add({ name: t.name, source: 'template', days, createdAt: new Date() })
     }

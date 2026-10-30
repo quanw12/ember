@@ -1,6 +1,10 @@
+import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../../db'
-import { weekdayLabel, weekdayShort, jsDayToWeekday } from '../../data/routines.seed'
+import { weekdayLabel, weekdayShort, jsDayToWeekday, ROUTINE_TEMPLATES, createRoutineFromTemplate } from '../../data/routines.seed'
+import { suggestPlans } from '../../lib/recommend'
+
+const DAY_CHOICES = [2, 3, 4, 5, 6]
 
 export default function PlansHome({ onStart, onEdit }: {
   onStart: (slugs: string[], name: string) => void
@@ -9,7 +13,13 @@ export default function PlansHome({ onStart, onEdit }: {
   const routines = useLiveQuery(() => db.routines.toArray())
   const activeRow = useLiveQuery(() => db.settings.get('activeRoutineId'))
   const exercises = useLiveQuery(() => db.exercises.toArray())
+  const profile = useLiveQuery(() => db.profile.get(1))
   const activeId = activeRow?.value as number | undefined
+
+  // null = theo số buổi khai báo trong hồ sơ; chọn tay thì ghi đè
+  const [selDays, setSelDays] = useState<number | null>(null)
+  const days = selDays ?? Math.min(6, Math.max(2, profile?.daysGym ?? 3))
+  const suggestions = suggestPlans(days, profile?.expLevel ?? 'new')
 
   const nameOf = (slug: string): string => exercises?.find(e => e.slug === slug)?.name ?? slug
   const active = routines?.find(r => r.id === activeId)
@@ -26,6 +36,18 @@ export default function PlansHome({ onStart, onEdit }: {
   const startToday = () => {
     if (!active || !todayDay || todayDay.slugs.length === 0) return
     onStart(todayDay.slugs, `${active.name} · ${weekdayLabel(today)}`)
+  }
+  /** Dùng lịch gợi ý: có sẵn thì kích hoạt, chưa có thì tạo từ template rồi kích hoạt. */
+  const useSuggestion = async (name: string) => {
+    const existing = routines?.find(r => r.name === name)
+    let id = existing?.id
+    if (id == null) {
+      if (!profile) return
+      const created = await createRoutineFromTemplate(name, profile.equipment)
+      if (created == null) return
+      id = created
+    }
+    await setActive(id)
   }
 
   return (
@@ -50,6 +72,45 @@ export default function PlansHome({ onStart, onEdit }: {
               : 'Chưa chọn kế hoạch hoạt động — chọn một kế hoạch bên dưới hoặc tập tự do ở Thư viện.'}
           </div>
         )}
+      </div>
+
+      <div className="card">
+        <div className="eyebrow">GỢI Ý CHO BẠN</div>
+        <h2 className="h" style={{ marginTop: 4 }}>Chọn số buổi — mình rcm lịch tương ứng.</h2>
+        <div className="seg" style={{ marginTop: 10 }}>
+          {DAY_CHOICES.map(n => (
+            <button key={n} type="button" className={days === n ? 'on' : ''} onClick={() => setSelDays(n)}>
+              {n} buổi
+            </button>
+          ))}
+        </div>
+        <div style={{ marginTop: 12 }}>
+          {suggestions.map((s, i) => {
+            const existing = routines?.find(r => r.name === s.name)
+            const isActive = existing != null && existing.id === activeId
+            const chips = ROUTINE_TEMPLATES.find(t => t.name === s.name)?.days.map(d => weekdayShort(d.weekday)).join(' · ')
+            return (
+              <div className="kv" key={s.name} style={{ alignItems: 'flex-start' }}>
+                <b style={{ flex: 1 }}>
+                  {i === 0 && <span className="streak" style={{ color: 'var(--ember)', marginRight: 6 }}>⭐ RCM</span>}
+                  {s.name}
+                  <span style={{ display: 'block', fontWeight: 400, color: 'var(--text-2)', fontSize: 12.5, marginTop: 2 }}>
+                    {chips && <span style={{ color: 'var(--text-3)' }}>{chips} — </span>}{s.tagline}
+                    {existing && <span style={{ color: 'var(--text-3)' }}> (đã có trong danh sách)</span>}
+                  </span>
+                </b>
+                <span>
+                  {isActive
+                    ? <span className="streak" style={{ color: 'var(--red-soft)' }}>ĐANG DÙNG</span>
+                    : <button type="button" className="btn ghost" style={{ width: 'auto', padding: '8px 14px', fontSize: 11, margin: 0 }} onClick={() => useSuggestion(s.name)}>
+                        {existing ? 'Dùng' : 'Tạo & dùng'}
+                      </button>}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+        <div className="note">Gợi ý lọc theo trình độ ({profile?.expLevel === 'new' ? 'người mới' : profile?.expLevel === 'mid' ? '1–3 năm' : '3+ năm'}) — bài được lọc theo dụng cụ bạn khai báo.</div>
       </div>
 
       <div className="card" style={{ padding: 14 }}>
