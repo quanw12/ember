@@ -1,6 +1,7 @@
 node_modules
 dist
 dev-dist
+.tmp
 *.local
 .DS_Store
 Thumbs.db

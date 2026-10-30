@@ -1,0 +1,44 @@
+name: Release
+
+# Push tag v* → build PWA, đóng gói zip + checksum, tạo GitHub Release
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      # Cấm publish khi typecheck/build lỗi
+      - run: npm run build
+
+      - name: Đóng gói PWA
+        run: |
+          mkdir -p out/ember-web
+          cp -r dist/* out/ember-web/
+          cd out
+          zip -qr "ember-${{ github.ref_name }}-web.zip" ember-web
+          sha256sum "ember-${{ github.ref_name }}-web.zip" > checksums.txt
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            out/*.zip
+            out/checksums.txt
+          generate_release_notes: true
