@@ -1,7 +1,7 @@
 {
   "name": "ember-fit",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "description": "EMBER — Keep the fire. PWA luyện tập cá nhân: gym, chạy bộ, tiến trình. Local-first, offline.",
   "scripts": {
