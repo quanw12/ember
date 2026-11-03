@@ -1,6 +1,6 @@
 # Nhiệm vụ tài khoản và máy chủ local
 
-Nhánh `codex/auth-local` dựa trên `codex/ios-sideload`, tiếp nối `codex/android-prototype`. Chưa merge vào main hoặc thay bản beta công khai. Các commit native, auth/schema và kiểm thử được tách riêng để review.
+Nhánh `feature/auth-local` dựa trên `feature/ios-sideload`, tiếp nối `feature/android-prototype`. Chưa merge vào main hoặc thay bản beta công khai. Các commit native, auth/schema và kiểm thử được tách riêng để review.
 
 ## Khởi động trên Windows
 
