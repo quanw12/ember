@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="420" viewBox="0 0 1200 420" role="img" aria-labelledby="title desc">
+<title id="title">EMBER — Keep the fire</title>
+<desc id="desc">Gym, chạy bộ và tiến trình trong một nhật ký riêng trên thiết bị. Minh họa nhận diện với ngọn lửa và ba nhóm tính năng.</desc>
+<defs>
+  <radialGradient id="glow"><stop stop-color="#E9A576" stop-opacity=".5"/><stop offset="1" stop-color="#F7F3EC" stop-opacity="0"/></radialGradient>
+  <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse"><path d="M32 0H0V32" fill="none" stroke="#696257" stroke-opacity=".035"/></pattern>
+</defs>
+<rect width="1200" height="420" rx="24" fill="#F7F3EC"/>
+<rect width="1200" height="420" rx="24" fill="url(#grid)"/>
+<ellipse cx="865" cy="195" rx="335" ry="270" fill="url(#glow)"/>
+<g font-family="Be Vietnam Pro,Segoe UI,Arial,sans-serif">
+  <g transform="translate(48 40)" fill="none" stroke="#E94E35" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2">
+    <path d="M17 1C24 10 28 15 28 23a11 11 0 0 1-22 0C6 15 10 10 17 1Z"/>
+    <path d="M17 20c3 4 4 6 4 9a4 4 0 0 1-8 0c0-3 1-5 4-9Z"/>
+  </g>
+  <text x="96" y="68" fill="#29251F" font-size="27" font-weight="800" letter-spacing="5">EMBER</text>
+  <text x="97" y="91" fill="#696257" font-size="10" letter-spacing="3.3">KEEP THE FIRE</text>
+  <text x="48" y="186" fill="#29251F" font-size="62" font-weight="800" letter-spacing="-2">Giữ lửa.</text>
+  <text x="48" y="260" fill="#A8482E" font-size="62" font-weight="800" letter-spacing="-2">Mỗi ngày.</text>
+  <text x="51" y="315" fill="#696257" font-size="19">Gym · Chạy bộ · Tiến trình</text>
+  <path d="M51 348H416" stroke="#DDD3C3"/>
+  <text x="51" y="378" fill="#696257" font-size="11" letter-spacing="2">LOCAL-FIRST / OFFLINE / PWA</text>
+  <g fill="none" stroke="#A8482E">
+    <circle cx="746" cy="211" r="133" opacity=".13"/>
+    <circle cx="746" cy="211" r="170" opacity=".08" stroke-dasharray="5 9"/>
+    <circle cx="746" cy="211" r="208" opacity=".05"/>
+    <g transform="translate(671 101) scale(6.1)" stroke="#E94E35" stroke-width=".8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 3C15 6.5 17 9 17 12.5a5 5 0 0 1-10 0C7 9 9 6.5 12 3Z"/>
+      <path d="M12 12.5c1 1.1 1.4 1.9 1.4 2.7a1.4 1.4 0 0 1-2.8 0c0-.8.4-1.6 1.4-2.7Z"/>
+    </g>
+  </g>
+  <g transform="translate(890 74)">
+    <rect width="253" height="78" rx="17" fill="#FFFCF6" stroke="#DDD3C3"/>
+    <g transform="translate(19 23)" stroke="#A8482E" fill="none" stroke-width="2"><path d="M3 9v14m5-18v22m18-22v22m5-18v14M8 16h18"/></g>
+    <text x="70" y="32" fill="#29251F" font-size="15" font-weight="700">GYM</text>
+    <text x="70" y="55" fill="#696257" font-size="12">Lên lịch. Ghi từng hiệp.</text>
+    <rect y="95" width="253" height="78" rx="17" fill="#FFFCF6" stroke="#DDD3C3"/>
+    <g transform="translate(19 121)" stroke="#A8482E" fill="none" stroke-width="2"><path d="M4 24C15 24 9 2 19 2s3 21 14 21"/><circle cx="4" cy="24" r="2"/><circle cx="33" cy="23" r="2"/></g>
+    <text x="70" y="127" fill="#29251F" font-size="15" font-weight="700">CHẠY BỘ</text>
+    <text x="70" y="150" fill="#696257" font-size="12">Quãng đường. Nhịp chạy.</text>
+    <rect y="190" width="253" height="78" rx="17" fill="#FFFCF6" stroke="#DDD3C3"/>
+    <g transform="translate(21 215)" stroke="#A8482E" fill="none" stroke-width="2"><path d="M2 25 12 15l7 6L32 5m-9 0h9v9"/></g>
+    <text x="70" y="222" fill="#29251F" font-size="15" font-weight="700">TIẾN TRÌNH</text>
+    <text x="70" y="245" fill="#696257" font-size="12">Thấy từng bước tiến bộ.</text>
+  </g>
+  <text x="1143" y="378" text-anchor="end" fill="#696257" font-size="10" letter-spacing="1.5">YOUR TRAINING. YOUR DEVICE.</text>
+</g>
+</svg>

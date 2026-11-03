@@ -34,7 +34,7 @@ export default function TodayPlanCard({ onStart, onGoPlans }: {
           <div className="meta">{slugs.map(s => nameOf(s).en).join(' · ')}</div>
           <button className="btn" style={{ marginTop: 12 }} onClick={() => onStart(slugs, `${active!.name} · ${weekdayShort(weekday)}`)}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
-              <DumbbellIcon /> BẮT ĐẦU TẬP
+              <DumbbellIcon className="button-icon" /> BẮT ĐẦU TẬP
             </span>
           </button>
         </>

@@ -60,6 +60,7 @@ h2.h { font-size: 17px; font-weight: 800; }
 .btn.danger { background: transparent; border: 1px solid var(--red-deep); color: var(--red-soft); }
 .btn:disabled { opacity: .45; cursor: default; }
 .btn + .btn { margin-top: 10px; }
+.button-icon { width: 20px; height: 20px; }
 
 input[type="number"], input[type="text"], input[type="date"], input[type="time"], input[type="search"], select, textarea {
   width: 100%; background: var(--bg-1); border: 1px solid var(--line-2);
