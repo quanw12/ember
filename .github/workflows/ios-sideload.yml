@@ -2,7 +2,7 @@ name: iOS unsigned IPA
 on:
   workflow_dispatch:
   push:
-    branches: [codex/ios-sideload]
+    branches: [feature/ios-sideload]
 permissions:
   contents: read
 jobs:
