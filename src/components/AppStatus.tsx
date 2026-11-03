@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useRegisterSW } from 'virtual:pwa-register/react'
 import { FlameIcon } from './icons'
+import { Capacitor } from '@capacitor/core'
 
 interface InstallEvent extends Event {
   prompt(): Promise<void>
@@ -33,7 +34,7 @@ export default function AppStatus({ busy = false }: { busy?: boolean }) {
       window.removeEventListener('unhandledrejection', rejected)
     }
   }, [])
-  const standalone = matchMedia('(display-mode: standalone)').matches
+  const standalone = Capacitor.isNativePlatform() || matchMedia('(display-mode: standalone)').matches
     || Boolean((navigator as Navigator & { standalone?: boolean }).standalone)
   return <>
     <header className="brandbar">
