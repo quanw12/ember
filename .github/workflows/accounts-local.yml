@@ -1,0 +1,29 @@
+name: Local accounts integration
+on:
+  push:
+    branches: [codex/auth-local]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  accounts:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    env:
+      VITE_BACKEND_URL: http://127.0.0.1:8090
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: npm ci
+      - run: python scripts/setup_backend.py
+      - run: python scripts/test_accounts.py
+      - run: npm run build
+      - run: pip install -r requirements-test.txt
+      - run: python -m playwright install chromium
+      - run: python scripts/with_server.py --server "backend\bin\pocketbase.exe serve --http=127.0.0.1:8090 --dir .tmp/ui-auth-data --migrationsDir backend/pb_migrations" --port 8090 --server "npm run dev -- --port 5173 --strictPort" --port 5173 -- python scripts/test_accounts_ui.py

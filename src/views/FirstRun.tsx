@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { createSlot } from '../db'
 import iconUrl from '../assets/brand/icon.svg'
+import AccountPanel from '../components/AccountPanel'
 
 /** Màn hình đầu tiên khi chưa có hồ sơ nào trên máy — mỗi người một kho riêng. */
 export default function FirstRun({ onDone }: { onDone: () => void }) {
@@ -30,6 +31,7 @@ export default function FirstRun({ onDone }: { onDone: () => void }) {
         <p className="note">Không cần tài khoản. Dữ liệu lưu trên thiết bị của bạn.</p>
       </div>
       <div className="welcome-features"><span>01 · GYM</span><span>02 · CHẠY BỘ</span><span>03 · TIẾN TRÌNH</span></div>
+      <AccountPanel onChanged={onDone} />
     </main>
   )
 }
