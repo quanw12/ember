@@ -1,0 +1,35 @@
+name: iOS unsigned IPA
+on:
+  workflow_dispatch:
+  push:
+    branches: [feature/ios-sideload]
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: xcodebuild -version
+      - run: npm ci
+      - run: npm run build
+      - run: npx cap sync ios
+      - name: Build unsigned device app
+        run: xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath output/ios CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build
+      - name: Package for user signing
+        run: |
+          mkdir -p output/package/Payload
+          cp -R output/ios/Build/Products/Release-iphoneos/App.app output/package/Payload/
+          cd output/package
+          zip -qr ../ember-ios-unsigned.ipa Payload
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ember-ios-unsigned
+          path: output/ember-ios-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 14
