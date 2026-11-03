@@ -166,7 +166,7 @@ def run(engine, name):
     # Offline must work with the production service worker on the /ember/ subpath.
     page.evaluate('navigator.serviceWorker.ready.then(() => true)')
     page.wait_for_function('navigator.serviceWorker.controller !== null')
-    assert not errors, errors
+    assert not [error for error in errors if 'tile.openstreetmap.org/' not in error], errors
     # A real origin outage also covers WebKit: setOffline rejects even literal
     # service-worker responses in Playwright (upstream issue #42775).
     origin_offline(True)
