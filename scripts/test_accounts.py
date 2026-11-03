@@ -4,6 +4,7 @@ from pathlib import Path
 
 root = Path(__file__).resolve().parents[1]
 exe = root / 'backend/bin/pocketbase.exe'
+(root/'.tmp').mkdir(exist_ok=True)
 base = 'http://127.0.0.1:8091'
 
 def api(path, body=None, token=None, method=None):
