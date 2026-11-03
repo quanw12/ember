@@ -161,6 +161,8 @@ Xem [báo cáo ổn định và phát hành](RELEASE-READINESS.md) để biết 
 
 ## Phát triển
 
+Các nhánh đang phát triển: [`feature/android-prototype`](https://github.com/quanw12/ember/tree/feature/android-prototype) cho APK, [`feature/ios-sideload`](https://github.com/quanw12/ember/tree/feature/ios-sideload) cho IPA chưa ký và [`feature/auth-local`](https://github.com/quanw12/ember/tree/feature/auth-local) cho tài khoản/máy chủ riêng. Hướng dẫn: [Android](docs/ANDROID.md), [iOS](docs/IOS.md), [tài khoản local](docs/ACCOUNTS.md). Đây là các thay đổi thử nghiệm, chưa thay thế bản PWA công khai.
+
 Yêu cầu: **Node.js 22.12+ hoặc Node.js 24 LTS**, npm. Các lệnh dưới đây chạy từ thư mục gốc của repo.
 
 ```bash

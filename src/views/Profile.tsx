@@ -11,6 +11,7 @@ import { exportBackup, parseBackup, restoreBackup } from '../lib/backup'
 import { Capacitor } from '@capacitor/core'
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem'
 import { Share } from '@capacitor/share'
+import AccountPanel from '../components/AccountPanel'
 
 const pad = (n: number): string => String(n).padStart(2, '0')
 
@@ -142,6 +143,7 @@ export default function ProfileView({ onUsersChanged }: { onUsersChanged: () => 
         <div className="eyebrow">HỒ SƠ</div>
         <h1 className="h">Con số của bạn.</h1>
       </div>
+      <AccountPanel onChanged={onUsersChanged} />
 
       <div className="card">
         <div className="kv"><b>Mục tiêu</b><span>{goalLabel}{profile.targetWeightKg ? ` — ${profile.targetWeightKg} kg` : ''}</span></div>

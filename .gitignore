@@ -7,3 +7,6 @@ dev-dist
 Thumbs.db
 output/
 __pycache__/
+backend/bin/
+backend/pb_data/
+.env
