@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, type Run } from '../db'
 import { fmtPace, fmtClock } from '../lib/geo'
@@ -6,11 +6,18 @@ import { weekStart } from '../lib/gym'
 import { C25K, C25K_TOTAL } from '../data/c25k'
 import RunTracker from './run/RunTracker'
 import RunDetail from './run/RunDetail'
+import { isRunDraft, RUN_DRAFT_KEY, type RunDraft } from '../lib/runDraft'
 
-type RunView = { kind: 'home' } | { kind: 'track' } | { kind: 'detail'; id: number }
+type RunView = { kind: 'home' } | { kind: 'track'; draft?: RunDraft } | { kind: 'detail'; id: number }
 
-export default function Run() {
+export default function Run({ onTrackingChange }: { onTrackingChange: (active: boolean) => void }) {
   const [view, setView] = useState<RunView>({ kind: 'home' })
+  const draftRow = useLiveQuery(async () => (await db.settings.get(RUN_DRAFT_KEY)) ?? null)
+  const draft = isRunDraft(draftRow?.value) ? draftRow.value : undefined
+  useEffect(() => {
+    onTrackingChange(view.kind === 'track')
+    return () => onTrackingChange(false)
+  }, [view.kind, onTrackingChange])
   // runs chỉ index 'date' — 'startedAt' không phải index, orderBy trên đó làm sập tab (NoSuchIndexError)
   const runs = useLiveQuery(async () => {
     const rs = await db.runs.toArray()
@@ -28,7 +35,7 @@ export default function Run() {
   }
 
   if (view.kind === 'track') {
-    return <RunTracker onSaved={() => setView({ kind: 'home' })} />
+    return <RunTracker initialDraft={view.draft} onSaved={() => setView({ kind: 'home' })} />
   }
   if (view.kind === 'detail') {
     return <RunDetail id={view.id} onBack={() => setView({ kind: 'home' })} />
@@ -46,7 +53,13 @@ export default function Run() {
       <div style={{ paddingTop: 22 }}>
         <div className="eyebrow">CHẠY BỘ</div>
         <h1 className="h">Lửa chạy chờ sẵn.</h1>
-        <button className="btn" style={{ marginTop: 12 }} onClick={() => setView({ kind: 'track' })}>BẮT ĐẦU CHẠY</button>
+        {draft ? <div className="card">
+          <div className="eyebrow">BUỔI CHẠY CHƯA LƯU</div>
+          <h2 className="h">Hành trình của bạn vẫn còn.</h2>
+          <p className="meta">{draft.distanceKm.toFixed(2)} km · {fmtClock(draft.elapsedSec)}. Khôi phục ở trạng thái tạm dừng; thời gian đóng app không được cộng.</p>
+          <button className="btn" style={{ marginTop: 12 }} onClick={() => setView({ kind: 'track', draft })}>Khôi phục buổi chạy</button>
+          <button className="btn ghost" onClick={async () => { if (window.confirm('Bỏ bản nháp buổi chạy này?')) await db.settings.delete(RUN_DRAFT_KEY) }}>Bỏ bản nháp</button>
+        </div> : <button className="btn" style={{ marginTop: 12 }} disabled={draftRow === undefined} onClick={() => setView({ kind: 'track' })}>BẮT ĐẦU CHẠY</button>}
       </div>
 
       {c25kDone < C25K_TOTAL ? (() => {

@@ -1,4 +1,4 @@
-import { db, type Exercise, type Profile, type RoutineDay } from '../db'
+import { db, getDatabase, type Exercise, type Profile, type RoutineDay } from '../db'
 
 export const WEEKDAYS = ['Thứ hai', 'Thứ ba', 'Thứ tư', 'Thứ năm', 'Thứ sáu', 'Thứ bảy', 'Chủ nhật']
 export const WEEKDAYS_SHORT = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
@@ -133,7 +133,7 @@ export async function createRoutineFromTemplate(name: string, equipment: Profile
  * (chạy sau onboarding vì cần biết equipment; idempotent theo routinesSeedRev).
  * Chế độ nữ (sex 'female') được thêm template thiên về mông/chân.
  */
-export async function ensureTemplatesFor(equipment: Profile['equipment'], sex: Profile['sex']): Promise<void> {
+export async function ensureTemplatesFor(equipment: Profile['equipment'], sex: Profile['sex'], db = getDatabase()): Promise<void> {
   const rSeedRow = await db.settings.get('routinesSeedRev')
   const rSeed = (rSeedRow?.value as number | undefined) ?? 0
   if (rSeed >= ROUTINES_SEED_REV) return

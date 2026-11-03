@@ -1,5 +1,8 @@
 import Dexie, { type Table } from 'dexie'
 
+/** Legacy photos may be Blobs; new photos use portable bytes for WebKit IDB. */
+export type StoredImage = Blob | { data: Uint8Array; type: string }
+
 export interface Profile {
   id: number // luôn là 1 — mỗi hồ sơ người dùng là một DB riêng
   sex: 'male' | 'female'
@@ -17,8 +20,8 @@ export interface Profile {
   kcalOverride?: number
   /** Chế độ nữ: độ dài chu kỳ (mặc định 28). */
   cycleLenDays?: number
-  /** Ảnh "body mong muốn" — lưu Blob cục bộ. */
-  targetPhoto?: Blob
+  /** Ảnh "body mong muốn" — lưu cục bộ. */
+  targetPhoto?: StoredImage
   createdAt: Date
   updatedAt: Date
 }
@@ -95,6 +98,10 @@ export interface Run {
   endedAt: Date
   /** Điểm GPS nén: [lat, lng, epochMs]. */
   points: [number, number, number][]
+  /** Index of the first point after each pause/resume; never bridge these gaps. */
+  segmentStarts?: number[]
+  /** Active elapsed seconds at each GPS fix, excluding pauses. */
+  elapsedAtPoints?: number[]
   distanceKm: number
   durationSec: number
 }
@@ -116,7 +123,7 @@ export interface Routine {
 export interface Photo {
   id?: number
   date: string
-  blob: Blob
+  blob: StoredImage
 }
 
 /** Ghi nhận chu kỳ: kind 'start' = ngày đầu kỳ kinh. */
@@ -133,7 +140,7 @@ export interface Checkin {
   ts: Date
 }
 
-class EmberDB extends Dexie {
+export class EmberDB extends Dexie {
   profile!: Table<Profile, number>
   exercises!: Table<Exercise, number>
   bodyLogs!: Table<BodyLog, number>
@@ -149,7 +156,10 @@ class EmberDB extends Dexie {
   checkins!: Table<Checkin, number>
 
   constructor(name: string) {
-    super(name)
+    // Commit-backed reads avoid Dexie's optimistic-cache crash observed in
+    // WebKit during Blob mutations (applyOptimisticOps received a null op).
+    // liveQuery remains reactive; UI only shows data after the write commits.
+    super(name, { cache: 'disabled' })
     this.version(1).stores({
       profile: 'id',
       exercises: 'id, slug, muscle, equipment',
@@ -199,11 +209,12 @@ const SLOTS_KEY = 'emberSlots'
 const ACTIVE_KEY = 'emberActive'
 
 function readSlots(): SlotMeta[] {
-  try {
-    return JSON.parse(localStorage.getItem(SLOTS_KEY) ?? '[]') as SlotMeta[]
-  } catch {
-    return []
+  const value: unknown = JSON.parse(localStorage.getItem(SLOTS_KEY) ?? '[]')
+  if (!Array.isArray(value) || !value.every(s => s && typeof s.id === 'string'
+    && /^p[a-z0-9-]+$/i.test(s.id) && typeof s.name === 'string' && typeof s.createdAt === 'string')) {
+    throw new Error('Danh sách hồ sơ không hợp lệ. Dữ liệu vẫn còn trên thiết bị; không xoá dữ liệu trình duyệt.')
   }
+  return value as SlotMeta[]
 }
 
 function writeSlots(slots: SlotMeta[]): void {
@@ -228,11 +239,16 @@ let active: EmberDB = new EmberDB('ember-default')
 
 /** Trỏ `db` sang DB của một hồ sơ. Gọi trước khi render dùng db. */
 export function activateSlotDb(id: string): void {
+  if (active.name === `ember-${id}`) return
+  active.close()
   active = new EmberDB(`ember-${id}`)
 }
 
+/** Capture this instance before asynchronous work so a profile switch cannot redirect writes. */
+export function getDatabase(): EmberDB { return active }
+
 export function createSlot(name: string): SlotMeta {
-  const meta: SlotMeta = { id: 'p' + Date.now().toString(36), name, createdAt: new Date().toISOString() }
+  const meta: SlotMeta = { id: 'p' + crypto.randomUUID(), name: name.trim(), createdAt: new Date().toISOString() }
   const slots = readSlots()
   slots.push(meta)
   writeSlots(slots)
@@ -251,10 +267,12 @@ export function renameSlot(id: string, name: string): void {
 }
 
 export async function deleteSlot(id: string): Promise<void> {
+  const wasActive = getActiveSlot()?.id === id
   const slots = readSlots().filter(s => s.id !== id)
-  writeSlots(slots)
+  if (wasActive) active.close()
   await new EmberDB(`ember-${id}`).delete()
-  if (getActiveSlot()?.id === id) {
+  writeSlots(slots)
+  if (wasActive) {
     localStorage.removeItem(ACTIVE_KEY)
     const next = slots[0]
     if (next) {
@@ -271,18 +289,22 @@ export async function migrateLegacyIfNeeded(): Promise<void> {
   const dbs = await indexedDB.databases()
   if (!dbs.some(d => d.name === 'ember')) return
 
-  const meta = createSlot('Của tôi')
+  // Publish the slot only after an atomic copy succeeds. A failed copy is retryable.
+  const meta: SlotMeta = { id: 'p' + crypto.randomUUID(), name: 'Của tôi', createdAt: new Date().toISOString() }
+  const target = new EmberDB(`ember-${meta.id}`)
   const legacy = new EmberDB('ember')
   await legacy.open()
   try {
-    for (const table of legacy.tables) {
-      const rows = await table.toArray()
-      if (rows.length > 0) await active.table(table.name).bulkPut(rows)
-    }
+    const rows = await Promise.all(legacy.tables.map(async table => ({ name: table.name, rows: await table.toArray() })))
+    await target.transaction('rw', target.tables, async () => {
+      for (const table of rows) if (table.rows.length) await target.table(table.name).bulkPut(table.rows)
+    })
+    writeSlots([meta])
+    setActiveSlot(meta.id)
   } finally {
     legacy.close()
+    target.close()
   }
-  void meta
 }
 
 /** Proxy: mọi `db.xxx` trong app đều trỏ tới DB của hồ sơ đang mở. */

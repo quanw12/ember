@@ -7,6 +7,7 @@ import type { ReminderCfg } from '../lib/reminders'
 import { compressImage } from '../lib/image'
 import TargetPhoto from '../components/TargetPhoto'
 import StreakCalendar from '../components/StreakCalendar'
+import { exportBackup, parseBackup, restoreBackup } from '../lib/backup'
 
 const pad = (n: number): string => String(n).padStart(2, '0')
 
@@ -24,8 +25,10 @@ export default function ProfileView({ onUsersChanged }: { onUsersChanged: () => 
   const cycleQ = useLiveQuery(() => db.cycleLogs.orderBy('date').reverse().toArray())
   const remRow = useLiveQuery(() => db.settings.get('reminder'))
   const rem = (remRow?.value ?? null) as ReminderCfg | null
-  const notifPermission = typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'
+  const [notifPermission, setNotifPermission] = useState(typeof Notification !== 'undefined' ? Notification.permission : 'unsupported')
   const [newUserName, setNewUserName] = useState('')
+  const [backupBusy, setBackupBusy] = useState(false)
+  const [backupMessage, setBackupMessage] = useState('')
   const unitRow = useLiveQuery(() => db.settings.get('unit'))
   const unit = (unitRow?.value as Unit | undefined) ?? 'kg'
 
@@ -35,16 +38,38 @@ export default function ProfileView({ onUsersChanged }: { onUsersChanged: () => 
   const goalLabel = GOAL_OPTIONS.find(g => g.id === profile.goal)?.label ?? profile.goal
 
   const exportJson = async () => {
-    const slot = getActiveSlot()
-    const out: Record<string, unknown[]> = {}
-    for (const t of db.tables) out[t.name] = await t.toArray()
-    const blob = new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `ember-${(slot?.name ?? 'ho-so').toLowerCase().replace(/[^a-z0-9]+/gi, '-')}-${todayStr()}.json`
-    a.click()
-    URL.revokeObjectURL(url)
+    setBackupBusy(true)
+    setBackupMessage('')
+    try {
+      const slot = getActiveSlot()
+      const blob = new Blob([await exportBackup()], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `ember-${(slot?.name ?? 'ho-so').toLowerCase().replace(/[^a-z0-9]+/gi, '-')}-${todayStr()}.json`
+      document.body.append(a)
+      a.click()
+      a.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 30_000)
+      setBackupMessage('Đã tạo backup gồm nhật ký và ảnh. Hãy lưu file ở nơi an toàn.')
+    } catch (error) { setBackupMessage(error instanceof Error ? error.message : 'Không thể xuất backup.') }
+    finally { setBackupBusy(false) }
+  }
+
+  const importJson = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    setBackupBusy(true)
+    setBackupMessage('')
+    try {
+      if (file.size > 50 * 1024 * 1024) throw new Error('File vượt quá 50 MB. Hãy liên hệ hỗ trợ để khôi phục backup lớn.')
+      const backup = parseBackup(await file.text())
+      if (!window.confirm(`Thay thế dữ liệu hồ sơ đang mở bằng backup này? Ảnh và nhật ký hiện tại sẽ được thay thế. Hãy xuất backup hiện tại trước.`)) return
+      await restoreBackup(backup)
+      onUsersChanged()
+    } catch (error) { setBackupMessage(error instanceof Error ? error.message : 'Không thể khôi phục backup. Dữ liệu hiện tại được giữ nguyên.') }
+    finally { setBackupBusy(false) }
   }
 
   const wipe = async () => {
@@ -94,7 +119,10 @@ export default function ProfileView({ onUsersChanged }: { onUsersChanged: () => 
     void db.settings.put({ key: 'reminder', value: next })
   }
   const askPermission = async () => {
-    if (typeof Notification !== 'undefined') await Notification.requestPermission()
+    if (typeof Notification !== 'undefined') {
+      try { setNotifPermission(await Notification.requestPermission()) }
+      catch { setBackupMessage('Không thể xin quyền thông báo. Trên iPhone, hãy thêm EMBER vào màn hình chính rồi thử lại.') }
+    }
   }
 
   return (
@@ -187,7 +215,7 @@ export default function ProfileView({ onUsersChanged }: { onUsersChanged: () => 
         </span></div>
         <button className="btn ghost" style={{ marginTop: 12 }} onClick={() => void exportIcs()}>Xuất lịch 14 ngày (.ics → Apple Calendar)</button>
         <p className="note">
-          iOS PWA không gửi thông báo khi app đóng — để nhắc đúng giờ tuyệt đối: mở file .ics và thêm vào Apple Calendar, hoặc dùng app <b>Shortcuts</b> tạo Automation "Time of Day" mở EMBER tại giờ đã hẹn. Khi app đang mở, EMBER tự thông báo đúng giờ hẹn.
+          Bản EMBER này chỉ nhắc khi app đang mở, chưa tích hợp Web Push nền. Để có lịch nhắc khi đóng app, xuất file .ics và thêm vào ứng dụng Lịch trên điện thoại.
         </p>
       </div>
 
@@ -222,8 +250,16 @@ export default function ProfileView({ onUsersChanged }: { onUsersChanged: () => 
 
       <div className="card">
         <div className="eyebrow">DỮ LIỆU — CỦA BẠN, TRÊN MÁY BẠN</div>
+        <p className="note">EMBER {__APP_VERSION__} · PWA</p>
         <div className="meta" style={{ marginTop: 6 }}>EMBER không có tài khoản, không server. Backup là file JSON do bạn giữ.</div>
-        <button className="btn ghost" style={{ marginTop: 12 }} onClick={exportJson}>Xuất backup JSON</button>
+        <button className="btn ghost" style={{ marginTop: 12 }} disabled={backupBusy} onClick={exportJson}>{backupBusy ? 'Đang xử lý…' : 'Xuất backup JSON'}</button>
+        <label className="btn ghost backup-import" aria-disabled={backupBusy}>
+          Khôi phục từ backup JSON
+          <input type="file" accept=".json,application/json" disabled={backupBusy} onChange={importJson} />
+        </label>
+        {backupMessage && <p className="note" role="status">{backupMessage}</p>}
+        <p className="note">Backup bao gồm ảnh và ngày giờ. Dữ liệu chưa tự đồng bộ giữa các máy. Xoá dữ liệu trình duyệt hoặc gỡ app có thể làm mất nhật ký; hãy backup thường xuyên.</p>
+        <p className="note"><a href={`${import.meta.env.BASE_URL}privacy.html`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--ember)' }}>Quyền riêng tư & dữ liệu</a> · <a href="https://github.com/quanw12/ember/issues" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-2)' }}>Góp ý cho bản beta</a></p>
         <button className="btn danger" onClick={wipe}>Xoá toàn bộ dữ liệu</button>
       </div>
     </>

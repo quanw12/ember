@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db, todayStr, getActiveSlot, activateSlotDb, migrateLegacyIfNeeded } from './db'
+import { db, getDatabase, todayStr, getActiveSlot, activateSlotDb, migrateLegacyIfNeeded } from './db'
 import { EXERCISE_SEED, SEED_REV } from './data/exercises.seed'
 import { importLibrary, LIB_REV } from './data/library-import'
 import { ensureTemplatesFor } from './data/routines.seed'
@@ -10,10 +10,15 @@ import CoachChat from './components/CoachChat'
 import FirstRun from './views/FirstRun'
 import Onboarding from './views/Onboarding'
 import Today from './views/Today'
-import Gym, { type GymView } from './views/Gym'
-import Run from './views/Run'
-import Progress from './views/Progress'
-import ProfileView from './views/Profile'
+import type { GymView } from './views/Gym'
+import AppStatus from './components/AppStatus'
+import { RecoveryScreen } from './components/ErrorBoundary'
+
+const Gym = lazy(() => import('./views/Gym'))
+const Run = lazy(() => import('./views/Run'))
+const Progress = lazy(() => import('./views/Progress'))
+const ProfileView = lazy(() => import('./views/Profile'))
+const Loading = () => <div className="place" role="status">Đang chuẩn bị nhật ký của bạn…</div>
 
 export type Tab = 'today' | 'gym' | 'run' | 'progress' | 'profile'
 
@@ -28,17 +33,21 @@ const TABS: { id: Tab; label: string; Icon: (p: { className?: string }) => React
 export default function App() {
   const [tick, setTick] = useState(0)
   const [booted, setBooted] = useState(false)
+  const [bootError, setBootError] = useState('')
+  const bootOnce = useRef<Promise<void> | null>(null)
 
   useEffect(() => {
-    void (async () => {
+    if (!bootOnce.current) bootOnce.current = (async () => {
       await migrateLegacyIfNeeded()
       const slot = getActiveSlot()
       if (slot) activateSlotDb(slot.id)
       setBooted(true)
     })()
+    void bootOnce.current.catch(error => setBootError(error instanceof Error ? error.message : 'Không thể truy cập bộ nhớ thiết bị.'))
   }, [])
 
-  if (!booted) return null
+  if (bootError) return <RecoveryScreen message={bootError} />
+  if (!booted) return <Loading />
   const slot = getActiveSlot()
   if (!slot) return <FirstRun onDone={() => setTick(t => t + 1)} />
   return <AppShell key={`${slot.id}:${tick}`} onUsersChanged={() => setTick(t => t + 1)} />
@@ -48,6 +57,9 @@ function AppShell({ onUsersChanged }: { onUsersChanged: () => void }) {
   const [tab, setTab] = useState<Tab>('today')
   const [gymInit, setGymInit] = useState<GymView | undefined>()
   const [coachOpen, setCoachOpen] = useState(false)
+  const [visited, setVisited] = useState<Set<Tab>>(new Set(['today']))
+  const [tracking, setTracking] = useState(false)
+  const [seedError, setSeedError] = useState('')
   const seedOnce = useRef<Promise<void> | null>(null)
   // null = đã nạp xong và chưa có profile (hiện onboarding); undefined = đang nạp
   const profile = useLiveQuery(async () => (await db.profile.get(1)) ?? null)
@@ -55,11 +67,13 @@ function AppShell({ onUsersChanged }: { onUsersChanged: () => void }) {
   const startSession = async (slugs: string[], name: string) => {
     const id = await db.sessions.add({ date: todayStr(), startedAt: new Date(), name, slugs })
     setGymInit({ kind: 'session', id })
+    setVisited(tabs => new Set([...tabs, 'gym']))
     setTab('gym')
   }
 
   const openPlanner = () => {
     setGymInit({ kind: 'weekly' })
+    setVisited(tabs => new Set([...tabs, 'gym']))
     setTab('gym')
   }
 
@@ -68,7 +82,9 @@ function AppShell({ onUsersChanged }: { onUsersChanged: () => void }) {
   // nếu không luồng thứ hai sẽ update() giữa chừng và đụng primary key.
   useEffect(() => {
     if (!seedOnce.current) {
+      const source = getDatabase()
       seedOnce.current = (async () => {
+        const db = source
         const row = await db.settings.get('seedRev')
         if ((row?.value as number | undefined) !== SEED_REV) {
           const existing = await db.exercises.toArray()
@@ -87,16 +103,16 @@ function AppShell({ onUsersChanged }: { onUsersChanged: () => void }) {
         const libRow = await db.settings.get('libRev')
         if ((libRow?.value as number | undefined) !== LIB_REV) {
           try {
-            await importLibrary()
+            await importLibrary(source)
             await db.settings.put({ key: 'libRev', value: LIB_REV })
           } catch { /* offline lần đầu — sẽ thử lại ở lần mở sau */ }
         }
-      })()
+      })().catch(error => setSeedError(error instanceof Error ? error.message : 'Chưa nạp được dữ liệu bài tập.'))
     }
   }, [])
 
   useEffect(() => {
-    const t = setInterval(() => { void tickReminder() }, 30_000)
+    const t = setInterval(() => { void tickReminder().catch(() => {}) }, 30_000)
     return () => clearInterval(t)
   }, [])
 
@@ -104,33 +120,38 @@ function AppShell({ onUsersChanged }: { onUsersChanged: () => void }) {
   // hồ sơ nữ được thêm template thiên về mông/chân. Idempotent theo rev.
   useEffect(() => {
     if (!profile) return
+    const source = getDatabase()
     void (async () => {
       try {
         await seedOnce.current
-        await ensureTemplatesFor(profile.equipment, profile.sex)
+        await ensureTemplatesFor(profile.equipment, profile.sex, source)
       } catch { /* lỗi DB — thử lại ở lần mở sau */ }
     })()
   }, [profile])
 
-  if (profile === undefined) return null // Dexie đang nạp
+  if (seedError) return <RecoveryScreen message={seedError} />
+  if (profile === undefined) return <Loading />
 
   if (!profile) return <Onboarding />
 
   return (
     <>
-      <div className="app">
-        <div key={tab} className="anim-view anim-stagger">
-          {tab === 'today' && <Today onGoGym={() => setTab('gym')} onQuickStart={startSession} onOpenPlanner={openPlanner} />}
-          {tab === 'gym' && <Gym initial={gymInit} startSession={startSession} />}
-          {tab === 'run' && <Run />}
-          {tab === 'progress' && <Progress />}
-          {tab === 'profile' && <ProfileView onUsersChanged={onUsersChanged} />}
-        </div>
-      </div>
+      <main className="app" id="main-content">
+        <AppStatus busy={tracking} />
+        <Suspense fallback={<Loading />}>
+          <section hidden={tab !== 'today'} aria-label="Hôm nay"><Today onGoGym={() => { setVisited(tabs => new Set([...tabs, 'gym'])); setTab('gym') }} onQuickStart={startSession} onOpenPlanner={openPlanner} /></section>
+          {visited.has('gym') && <section hidden={tab !== 'gym'} aria-label="Gym"><Gym initial={gymInit} startSession={startSession} /></section>}
+          {visited.has('run') && <section hidden={tab !== 'run'} aria-label="Chạy"><Run onTrackingChange={setTracking} /></section>}
+          {visited.has('progress') && <section hidden={tab !== 'progress'} aria-label="Tiến trình"><Progress /></section>}
+          {visited.has('profile') && <section hidden={tab !== 'profile'} aria-label="Hồ sơ"><ProfileView onUsersChanged={onUsersChanged} /></section>}
+        </Suspense>
+      </main>
       <nav className="tabbar" aria-label="Điều hướng chính">
         <div className="inner">
           {TABS.map(({ id, label, Icon }) => (
-            <button key={id} type="button" className={`tab ${tab === id ? 'on' : ''}`} onClick={() => setTab(id)}>
+            <button key={id} type="button" className={`tab ${tab === id ? 'on' : ''}`} aria-current={tab === id ? 'page' : undefined}
+              disabled={id === 'profile' && tracking} title={id === 'profile' && tracking ? 'Lưu buổi chạy trước khi đổi hồ sơ' : undefined}
+              onClick={() => { setVisited(tabs => new Set([...tabs, id])); setTab(id); window.scrollTo({ top: 0, behavior: 'instant' }) }}>
               <Icon className={undefined} />
               {label}
             </button>

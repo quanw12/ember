@@ -1,4 +1,4 @@
-import { db, todayStr } from '../db'
+import { getDatabase, todayStr } from '../db'
 import { jsDayToWeekday } from '../data/routines.seed'
 import { isWeekend, plannedThisWeek, workoutDates } from './gym'
 
@@ -8,16 +8,15 @@ export interface ReminderCfg {
   minute: number
 }
 
-let firedOn = ''
-
 /**
  * Nhắc nhở tử tế (đúng luật đã chốt): 1 lần/ngày đúng giờ hẹn,
  * im khi buổi hôm nay đã xong, chỉ hoạt động khi app đang mở
- * (iOS PWA không cho web push nền — kèm phương án .ics/Shortcuts trong Hồ sơ).
+ * Bản này chưa tích hợp Web Push nền; dùng .ics khi cần nhắc lúc đóng app.
  */
 export async function tickReminder(): Promise<void> {
   const today = todayStr()
-  if (firedOn === today) return
+  const db = getDatabase()
+  if ((await db.settings.get('reminderFiredOn'))?.value === today) return
   const row = await db.settings.get('reminder')
   const cfg = row?.value as ReminderCfg | undefined
   if (!cfg?.enabled) return
@@ -31,7 +30,7 @@ export async function tickReminder(): Promise<void> {
     db.runs.where('date').equals(today).toArray(),
     db.checkins.where('date').equals(today).toArray()
   ])
-  if (workoutDates(sessionsToday, runsToday, checkinsToday).has(today)) { firedOn = today; return }
+  if (workoutDates(sessionsToday, runsToday, checkinsToday).has(today)) return
 
   const activeRow = await db.settings.get('activeRoutineId')
   const routine = activeRow ? await db.routines.get(activeRow.value as number) : undefined
@@ -51,7 +50,9 @@ export async function tickReminder(): Promise<void> {
     body = 'Cuối tuần rồi — lên lịch tuần mới: chọn ngày + nhóm cơ, EMBER gợi ý bài cho bạn chọn.'
   }
   try {
-    new Notification('EMBER — giờ tập', { body })
-    firedOn = today
+    const registration = 'serviceWorker' in navigator ? await navigator.serviceWorker.getRegistration() : undefined
+    if (registration) await registration.showNotification('EMBER — giờ tập', { body, tag: `ember-${db.name}-${today}` })
+    else new Notification('EMBER — giờ tập', { body })
+    await db.settings.put({ key: 'reminderFiredOn', value: today })
   } catch { /* trình duyệt chặn — thử lại lần sau */ }
 }

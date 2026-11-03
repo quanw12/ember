@@ -19,7 +19,7 @@ def expect_text(page, text: str, label: str) -> None:
     visible = False
     for _ in range(12):
         try:
-            if page.locator(f'text={text}').first.is_visible():
+            if page.locator(f'text={text}').filter(visible=True).first.is_visible():
                 visible = True
                 break
         except Exception:
@@ -32,7 +32,7 @@ with sync_playwright() as p:
     browser = p.chromium.launch(headless=True)
     page = browser.new_page(viewport={'width': 390, 'height': 844})  # cỡ iPhone 12
     page.on('pageerror', lambda e: errors.append('PAGEERROR: ' + (getattr(e, 'stack', None) or str(e))[:500]))
-    page.evaluate("""window.__errs = []; window.addEventListener('unhandledrejection', e => { const r = e.reason; window.__errs.push('REJECTION: ' + (r && (r.stack || r.message) || String(r))); });""")
+    page.add_init_script("""window.__errs = []; window.addEventListener('unhandledrejection', e => { const r = e.reason; window.__errs.push('REJECTION: ' + (r && (r.stack || r.message) || String(r))); });""")
     page.on('console', lambda m: errors.append(f'CONSOLE-ERROR: {m.text}') if m.type == 'error' else None)
 
     # 1) FirstRun — tạo hồ sơ Quân
@@ -63,14 +63,14 @@ with sync_playwright() as p:
     expect_text(page, 'Đã check in', 'Check-in: trạng thái đã check in hôm nay')
 
     # 3) Tiến trình: ghi cân 71
-    page.click('button:has-text("Tiến trình")')
+    page.locator('.tab').filter(has_text='Tiến trình').click()
     page.fill('#pw', '71')
-    page.click('button:has-text("Lưu")')
+    page.click('button:has-text("Lưu"):visible')
     page.wait_for_timeout(600)
     expect_text(page, '71.0', 'Tiến trình: trung bình trượt 71.0 (log 71 cùng ngày with onboarding 70 → upsert)')
 
     # 4) Hồ sơ: thêm hồ sơ Lan
-    page.click('button:has-text("Hồ sơ")')
+    page.locator('.tab').filter(has_text='Hồ sơ').click()
     page.wait_for_selector('input[placeholder="Tên người mới"]')
     expect_text(page, 'Quân — đang dùng', 'Hồ sơ: Quân đang dùng')
     page.fill('input[placeholder="Tên người mới"]', 'Lan')
@@ -93,7 +93,7 @@ with sync_playwright() as p:
     expect_text(page, '55', 'Hôm nay: bắt đầu 55 kg (dữ liệu Lan)')
 
     # 6) Chuyển về Quân — dữ liệu phải là của Quân, không phải Lan
-    page.click('button:has-text("Hồ sơ")')
+    page.locator('.tab').filter(has_text='Hồ sơ').click()
     page.wait_for_selector('button:has-text("Chuyển")')
     page.click('button:has-text("Chuyển")')
     page.wait_for_load_state('networkidle')
@@ -106,7 +106,7 @@ with sync_playwright() as p:
         ok('CÁCH LY: không lộ 55 kg của Lan', True)
 
     # 7) Gym: template theo dụng cụ (Quân = full gym)
-    page.click('button:has-text("Gym")')
+    page.locator('.tab').filter(has_text='Gym').click()
     page.wait_for_timeout(600)
     expect_text(page, 'Full Body 3 buổi', 'Gym: template Full Body có sẵn')
     expect_text(page, 'PPL 6 buổi', 'Gym: template PPL có sẵn')
@@ -128,20 +128,21 @@ with sync_playwright() as p:
     expect_text(page, 'NHÓM CƠ ĐÍCH', 'Chi tiết bài: card nhóm cơ với mô hình SVG')
 
     # 8) Bấm đủ các tab còn lại — trước đây tab Chạy sập vì orderBy cột không index
-    page.click('button:has-text("Chạy")')
+    page.locator('.tab').filter(has_text='Chạy').click()
     page.wait_for_timeout(800)
     expect_text(page, 'BẮT ĐẦU CHẠY', 'Tab Chạy: không sập, thấy nút bắt đầu')
     expect_text(page, 'KẾ HOẠCH NHS C25K', 'Tab Chạy: kế hoạch C25K')
-    page.click('button:has-text("Tiến trình")')
+    page.locator('.tab').filter(has_text='Tiến trình').click()
     page.wait_for_timeout(600)
     expect_text(page, 'ẢNH PROGRESS', 'Tab Tiến trình: card ảnh progress')
-    page.click('button:has-text("Hồ sơ")')
+    page.locator('.tab').filter(has_text='Hồ sơ').click()
     page.wait_for_timeout(600)
     expect_text(page, 'NGƯỜI DÙNG TRÊN MÁY NÀY', 'Tab Hồ sơ: card đa hồ sơ')
-    page.click('button:has-text("Hôm nay")')
+    page.locator('.tab').filter(has_text='Hôm nay').click()
     page.wait_for_timeout(600)
     expect_text(page, 'Quân', 'Quay lại Hôm nay vẫn ổn')
 
+    errors.extend(page.evaluate('window.__errs'))
     browser.close()
 
 print('\n=== KẾT QUẢ ===')

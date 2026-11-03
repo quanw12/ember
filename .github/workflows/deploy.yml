@@ -21,10 +21,19 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
       - run: npm ci
       - run: npm run build
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+      - run: pip install -r requirements-test.txt
+      - run: python -m playwright install --with-deps chromium webkit
+      - run: npm run test:smoke
+      - run: npm run test:release
+      - run: npm audit --omit=dev --audit-level=high
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

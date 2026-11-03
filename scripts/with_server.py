@@ -19,6 +19,8 @@ import socket
 import time
 import sys
 import argparse
+import os
+import signal
 
 def is_server_ready(port, timeout=30):
     """Wait for server to be ready by polling the port."""
@@ -63,14 +65,17 @@ def main():
     try:
         # Start all servers
         for i, server in enumerate(servers):
+            if is_server_ready(server['port'], timeout=0.2):
+                raise RuntimeError(f"Port {server['port']} is already in use; stop the existing server before testing")
             print(f"Starting server {i+1}/{len(servers)}: {server['cmd']}")
 
             # Use shell=True to support commands with cd and &&
             process = subprocess.Popen(
                 server['cmd'],
                 shell=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                start_new_session=(os.name != 'nt')
             )
             server_processes.append(process)
 
@@ -93,8 +98,13 @@ def main():
         print(f"\nStopping {len(server_processes)} server(s)...")
         for i, process in enumerate(server_processes):
             try:
-                process.terminate()
+                if os.name == 'nt':
+                    subprocess.run(['taskkill', '/PID', str(process.pid), '/T', '/F'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                else:
+                    os.killpg(process.pid, signal.SIGTERM)
                 process.wait(timeout=5)
+            except ProcessLookupError:
+                pass
             except subprocess.TimeoutExpired:
                 process.kill()
                 process.wait()

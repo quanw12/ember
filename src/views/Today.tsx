@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db, todayStr, movingAvg, getActiveSlot } from '../db'
+import { db, movingAvg, getActiveSlot } from '../db'
 import { macroPlan, GOAL_OPTIONS, toDisplayW, cycleInfo, PHASE_LABEL, type Unit } from '../lib/calc'
-import { streakOf, workoutDates, isWeekend, weekKey, plannedThisWeek, localIso } from '../lib/gym'
+import { streakOf, workoutDates, isWeekend, weekKey, plannedThisWeek, localIso, weekStart } from '../lib/gym'
 import { FlameIcon } from '../components/icons'
 import TargetPhoto from '../components/TargetPhoto'
 import TodayPlanCard from '../components/TodayPlanCard'
+import { useToday } from '../lib/useToday'
 
 function greeting(name?: string): string {
   const h = new Date().getHours()
@@ -20,11 +21,11 @@ export default function Today({ onGoGym, onQuickStart, onOpenPlanner }: {
   onQuickStart: (slugs: string[], name: string) => void
   onOpenPlanner: () => void
 }) {
-  const today = todayStr()
+  const today = useToday()
   const profile = useLiveQuery(() => db.profile.get(1))
   const bodyLogs = useLiveQuery(() => db.bodyLogs.orderBy('date').toArray())
-  const todayNutrition = useLiveQuery(() => db.nutritionLogs.where('date').equals(today).first())
-  const todaySleep = useLiveQuery(() => db.sleepLogs.where('date').equals(today).first())
+  const todayNutrition = useLiveQuery(() => db.nutritionLogs.where('date').equals(today).first(), [today])
+  const todaySleep = useLiveQuery(() => db.sleepLogs.where('date').equals(today).first(), [today])
   const sessions = useLiveQuery(() => db.sessions.toArray())
   const checkins = useLiveQuery(() => db.checkins.toArray())
   const runs = useLiveQuery(() => db.runs.toArray())
@@ -40,14 +41,16 @@ export default function Today({ onGoGym, onQuickStart, onOpenPlanner }: {
   const [kcal, setKcal] = useState('')
   const [protein, setProtein] = useState('')
   const [sleep, setSleep] = useState('')
+  const [logMessage, setLogMessage] = useState('')
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    if (todayNutrition?.kcal != null) setKcal(String(todayNutrition.kcal))
-    if (todayNutrition?.proteinG != null) setProtein(String(todayNutrition.proteinG))
-  }, [todayNutrition?.id])
+    setKcal(todayNutrition?.kcal != null ? String(todayNutrition.kcal) : '')
+    setProtein(todayNutrition?.proteinG != null ? String(todayNutrition.proteinG) : '')
+  }, [todayNutrition?.id, today])
   useEffect(() => {
-    if (todaySleep?.hours != null) setSleep(String(todaySleep.hours))
-  }, [todaySleep?.id])
+    setSleep(todaySleep?.hours != null ? String(todaySleep.hours) : '')
+  }, [todaySleep?.id, today])
 
   if (!profile) return null
   const plan = macroPlan(profile)
@@ -71,6 +74,10 @@ export default function Today({ onGoGym, onQuickStart, onOpenPlanner }: {
   const litDates = workoutDates(sessions, runs, checkins)
   const checkedInToday = (checkins ?? []).some(c => c.date === today)
   const streak = streakOf(litDates, today)
+  const monday = localIso(weekStart(new Date()))
+  const weekSessions = (sessions ?? []).filter(s => s.endedAt && s.date >= monday && s.date <= today).length
+  const weekRuns = (runs ?? []).filter(r => r.date >= monday && r.date <= today)
+  const weekKm = weekRuns.reduce((sum, r) => sum + r.distanceKm, 0)
 
   // Dải 7 ngày gần nhất cho card check-in (đậm dần theo lửa)
   const last7: { date: string; lit: boolean }[] = []
@@ -85,63 +92,85 @@ export default function Today({ onGoGym, onQuickStart, onOpenPlanner }: {
 
   const saveQuickLog = async () => {
     const k = Number(kcal), p = Number(protein), s = Number(sleep)
-    const existingN = await db.nutritionLogs.where('date').equals(today).first()
-    if (existingN?.id) {
-      await db.nutritionLogs.update(existingN.id, { kcal: kcal ? k : undefined, proteinG: protein ? p : undefined })
-    } else if (kcal || protein) {
-      await db.nutritionLogs.add({ date: today, kcal: kcal ? k : undefined, proteinG: protein ? p : undefined })
+    if ((kcal && (!Number.isFinite(k) || k < 0 || k > 20000)) || (protein && (!Number.isFinite(p) || p < 0 || p > 1000)) || (sleep && (!Number.isFinite(s) || s < 0 || s > 24))) {
+      setLogMessage('Kiểm tra lại: kcal 0–20.000, protein 0–1.000 g, giấc ngủ 0–24 giờ.')
+      return
     }
-    const existingS = await db.sleepLogs.where('date').equals(today).first()
-    if (existingS?.id) {
-      await db.sleepLogs.update(existingS.id, { hours: sleep ? s : undefined })
-    } else if (sleep) {
-      await db.sleepLogs.add({ date: today, hours: s })
-    }
+    setSaving(true)
+    setLogMessage('')
+    try {
+      await db.transaction('rw', db.nutritionLogs, db.sleepLogs, async () => {
+        const existingN = await db.nutritionLogs.where('date').equals(today).first()
+        if (existingN?.id) {
+          await db.nutritionLogs.update(existingN.id, { kcal: kcal ? k : undefined, proteinG: protein ? p : undefined })
+        } else if (kcal || protein) {
+          await db.nutritionLogs.add({ date: today, kcal: kcal ? k : undefined, proteinG: protein ? p : undefined })
+        }
+        const existingS = await db.sleepLogs.where('date').equals(today).first()
+        if (existingS?.id) {
+          await db.sleepLogs.update(existingS.id, { hours: sleep ? s : undefined })
+        } else if (sleep) {
+          await db.sleepLogs.add({ date: today, hours: s })
+        }
+      })
+      setLogMessage('Đã lưu nhật ký hôm nay trên thiết bị.')
+    } catch { setLogMessage('Chưa lưu được nhật ký. Kiểm tra dung lượng thiết bị và thử lại.') }
+    finally { setSaving(false) }
   }
 
   const R = 30, C = 2 * Math.PI * R
 
   /** Check-in: thắp lửa ngày hôm nay — không cần chụp ảnh. */
   const checkin = async () => {
-    const existing = await db.checkins.where('date').equals(today).first()
-    if (!existing) await db.checkins.add({ date: today, ts: new Date() })
+    await db.transaction('rw', db.checkins, async () => {
+      const existing = await db.checkins.where('date').equals(today).first()
+      if (!existing) await db.checkins.add({ date: today, ts: new Date() })
+    })
   }
 
   return (
     <>
-      <div style={{ paddingTop: 22 }}>
+      <div className="today-heading">
         <div className="eyebrow">{DAYS[new Date().getDay()]} · {new Date().toLocaleDateString('vi-VN')}</div>
         <h1 className="h">{greeting(getActiveSlot()?.name)}</h1>
+        <p className="meta">Một chút tiến bộ. Mỗi ngày.</p>
         <div style={{ marginTop: 10 }}>
           <span className="streak"><FlameIcon /> {streak > 0 ? `${streak} ngày giữ lửa` : 'Bắt đầu lửa hôm nay'}</span>
         </div>
       </div>
 
-      <div className="card row" style={{ alignItems: 'center', gap: 14 }}>
+      <div className={`card training-hero ${checkedInToday ? 'is-lit' : ''}`}>
+        <FlameIcon className="hero-flame" />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div className="eyebrow">CHECK IN HẰNG NGÀY</div>
-          <h2 className="h" style={{ marginTop: 2 }}>{checkedInToday ? 'Lửa đang cháy.' : 'Thắp lửa hôm nay.'}</h2>
-          <div className="row" style={{ gap: 6, marginTop: 6 }}>
+          <h2 className="h hero-title">{checkedInToday ? <>Lửa đang cháy.<br /><em>Giữ nhịp nhé.</em></> : <>Bắt đầu nhỏ.<br /><em>Giữ lửa lớn.</em></>}</h2>
+          <p className="hero-caption">Dành một khoảnh khắc cho bản thân.<br />Hôm nay cũng là một bước tiến.</p>
+          <div className="week-rhythm" aria-label="Check-in 7 ngày gần nhất">
             {last7.map(d => (
-              <span key={d.date} title={d.date} style={{
-                width: 11, height: 11, borderRadius: 999,
-                background: d.lit ? 'var(--ember)' : 'var(--line-2)',
-                boxShadow: d.lit ? '0 0 6px rgba(255,122,69,.55)' : 'none',
-                border: d.date === today ? '1.5px solid var(--text-2)' : 'none'
-              }} />
+              <span key={d.date} className={`rhythm-day ${d.lit ? 'lit' : ''} ${d.date === today ? 'current' : ''}`}
+                title={`${d.date}: ${d.lit ? 'đã giữ lửa' : 'chưa check-in'}`}>
+                <small>{['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][new Date(d.date + 'T12:00:00').getDay()]}</small>
+                <span>{d.lit ? <FlameIcon /> : Number(d.date.slice(-2))}</span>
+              </span>
             ))}
           </div>
         </div>
         {checkedInToday ? (
-          <span className="streak" style={{ color: 'var(--ember)', fontSize: 13 }}><FlameIcon /> Đã check in</span>
+          <div className="hero-complete"><FlameIcon /> Đã check in <span>Hẹn bạn ngày mai ↗</span></div>
         ) : (
-          <button className="btn" style={{ width: 'auto', padding: '12px 18px', margin: 0, boxShadow: '0 0 18px rgba(232,35,42,.35)' }}
+          <button className="btn hero-cta"
             onClick={checkin}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
               <FlameIcon /> THẮP LỬA
             </span>
           </button>
         )}
+      </div>
+
+      <div className="week-overview" aria-label="Tổng quan tuần này">
+        <div><span className="metric-value">{weekSessions + weekRuns.length}<small> buổi</small></span><span>Tuần này</span></div>
+        <div><span className="metric-value">{weekKm.toFixed(1)}<small> km</small></span><span>Đã chạy</span></div>
+        <div><span className="metric-value">{streak}<small> ngày</small></span><span>Giữ lửa liên tiếp</span></div>
       </div>
 
       <div className="card row">
@@ -207,7 +236,8 @@ export default function Today({ onGoGym, onQuickStart, onOpenPlanner }: {
         </div>
         <label className="f" htmlFor="sleep">Giấc ngủ đêm qua (giờ)</label>
         <input id="sleep" type="number" inputMode="decimal" step="0.5" placeholder="7.5" value={sleep} onChange={e => setSleep(e.target.value)} />
-        <button className="btn ghost" style={{ marginTop: 12 }} onClick={saveQuickLog}>Lưu nhật ký hôm nay</button>
+        <button className="btn ghost" style={{ marginTop: 12 }} disabled={saving} onClick={saveQuickLog}>{saving ? 'Đang lưu…' : 'Lưu nhật ký hôm nay'}</button>
+        {logMessage && <p className="note" role="status">{logMessage}</p>}
       </div>
     </>
   )

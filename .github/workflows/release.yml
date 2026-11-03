@@ -20,13 +20,22 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
 
       - run: npm ci
 
       # Cấm publish khi typecheck/build lỗi
       - run: npm run build
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+      - run: pip install -r requirements-test.txt
+      - run: python -m playwright install --with-deps chromium webkit
+      - run: npm run test:smoke
+      - run: npm run test:release
+      - run: npm audit --omit=dev --audit-level=high
 
       - name: Đóng gói PWA
         run: |
@@ -42,3 +51,4 @@ jobs:
             out/*.zip
             out/checksums.txt
           generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-') }}

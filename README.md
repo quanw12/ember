@@ -30,7 +30,17 @@
 | 💻 **Laptop** (Win/Mac/Linux) | Mở link trên bằng **Chrome / Edge** → biểu tượng **Cài đặt** trên address bar — EMBER thành app desktop riêng. |
 | 📦 **Bản phát hành** | Tải zip build sẵn tại [**Releases**](https://github.com/quanw12/ember/releases) (kèm `checksums.txt`), giải nén rồi chạy `npx serve .` hoặc `python -m http.server` trong thư mục đó. |
 
-> Native iOS (IPA ký bằng Apple Developer, TestFlight) cần máy macOS + tài khoản $99/năm — vượt phạm vi build trên Windows. EMBER chọn PWA vì cài được thẳng lên iPhone ngay hôm nay với đầy đủ offline + notification.
+> Kênh beta hiện tại là **PWA cài qua link** trên Android/iPhone. GPS cần app ở phía trước và màn hình bật. Nhắc nhở chỉ hoạt động khi app mở; muốn nhắc khi đóng app, hãy xuất lịch .ics. Chưa có APK/IPA hay bản trên Google Play/App Store.
+
+## Beta 0.3 — giao diện mới, bảo vệ nhật ký
+
+- Dashboard mới với lịch lửa 7 ngày, thống kê tuần và bố cục thích ứng điện thoại/desktop.
+- Backup/restore JSON giữ cả ảnh và ngày giờ, kiểm tra file trước khi thay thế dữ liệu.
+- Buổi chạy giữ nguyên khi đổi tab, lưu nháp mỗi 5 giây và có thể khôi phục sau khi tải lại.
+- Cập nhật PWA theo lựa chọn của bạn, màn hình phục hồi lỗi và hướng dẫn cài app.
+- Kiểm thử production/offline ở đường dẫn `/ember/` trên Chromium và WebKit trước deploy.
+
+Xem [báo cáo ổn định và lộ trình phát hành](./RELEASE-READINESS.md). Trước khi mở beta rộng, cần QA trên iPhone và Android thật. Dữ liệu chưa đồng bộ giữa các máy: hãy giữ backup, nhất là trước khi xoá app hoặc đổi thiết bị.
 
 ## Tính năng
 
@@ -55,9 +65,10 @@ npm run icons   # sinh icon PNG cho manifest từ SVG brand
 npm run dev     # http://localhost:5173
 npm run build   # build production vào dist/
 npm run test:smoke   # smoke test trình duyệt (cần Python + playwright)
+npm run test:release # Chromium + WebKit, backup/GPS/offline trên bản dist
 ```
 
-Yêu cầu: Node 20+, npm. Smoke test: Python 3.10+ với `pip install playwright && playwright install chromium`.
+Yêu cầu: Node 22.12+ (hoặc Node 24 LTS), npm. Kiểm thử: Python 3.13 với `pip install -r requirements-test.txt` và `python -m playwright install chromium webkit`. Bản build phải có sẵn trước `test:release`.
 
 ## Cấu trúc
 
@@ -72,9 +83,9 @@ src/
 
 ## Deploy
 
-Push vào `main` — GitHub Actions tự build và deploy lên **https://quanw12.github.io/ember/** (bật 1 lần: *Settings → Pages → Source: GitHub Actions*).
+Push vào `main` — GitHub Actions tự build, kiểm thử hai engine trình duyệt, kiểm tra dependencies production và deploy lên **https://quanw12.github.io/ember/** (bật 1 lần: *Settings → Pages → Source: GitHub Actions*).
 
-Push tag `v*` — workflow **Release** tự build, đóng gói zip + `checksums.txt` và tạo GitHub Release.
+Push tag `v*` — workflow **Release** tự kiểm thử, đóng gói zip + `checksums.txt` và tạo GitHub Release. Tag có dấu `-` như `v0.3.0-beta.1` được đánh dấu prerelease.
 
 ## License & credit
 

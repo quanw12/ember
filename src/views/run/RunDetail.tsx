@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
 import { db } from '../../db'
-import { fmtPace, fmtClock, splitTimes } from '../../lib/geo'
+import { fmtPace, fmtClock, splitTimes, routeSegments } from '../../lib/geo'
 
 export default function RunDetail({ id, onBack }: { id: number; onBack: () => void }) {
   const run = useLiveQuery(() => db.runs.get(id))
@@ -11,24 +11,27 @@ export default function RunDetail({ id, onBack }: { id: number; onBack: () => vo
   const mapRef = useRef<L.Map | null>(null)
 
   useEffect(() => {
-    if (!mapDivRef.current || mapRef.current) return
+    if (!run || !mapDivRef.current || mapRef.current) return
     const map = L.map(mapDivRef.current, { zoomControl: false })
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap contributors',
       maxZoom: 19
     }).addTo(map)
     mapRef.current = map
+    const resize = new ResizeObserver(() => map.invalidateSize())
+    resize.observe(mapDivRef.current)
     return () => {
+      resize.disconnect()
       map.remove()
       mapRef.current = null
     }
-  }, [])
+  }, [run?.id])
 
   useEffect(() => {
     const map = mapRef.current
     if (!map || !run || run.points.length < 2) return
     const latlngs = run.points.map(p => [p[0], p[1]] as [number, number])
-    L.polyline(latlngs, { color: '#E8232A', weight: 4, lineCap: 'round' }).addTo(map)
+    L.polyline(routeSegments(run.points, run.segmentStarts), { color: '#E94E35', weight: 4, lineCap: 'round' }).addTo(map)
     L.circleMarker(latlngs[0], { radius: 5, color: '#FFF6F5', weight: 2, fillColor: '#3DD68C', fillOpacity: 1 }).addTo(map)
     L.circleMarker(latlngs[latlngs.length - 1], { radius: 5, color: '#FFF6F5', weight: 2, fillColor: '#E8232A', fillOpacity: 1 }).addTo(map)
     map.fitBounds(L.latLngBounds(latlngs).pad(0.12))
@@ -36,7 +39,7 @@ export default function RunDetail({ id, onBack }: { id: number; onBack: () => vo
 
   if (!run) return null
   const avgPace = run.distanceKm > 0 ? run.durationSec / run.distanceKm : null
-  const splits = splitTimes(run.points, run.distanceKm)
+  const splits = splitTimes(run.points, run.distanceKm, run.elapsedAtPoints, run.segmentStarts)
   const bestSplit = splits.length > 1 ? Math.min(...splits) : null
 
   const remove = async () => {

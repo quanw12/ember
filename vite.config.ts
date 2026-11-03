@@ -1,14 +1,16 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import { version } from './package.json'
 
 export default defineConfig({
   // Base tương đối để chạy dưới sub-path GitHub Pages (/ember/)
   base: './',
+  define: { __APP_VERSION__: JSON.stringify(version) },
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'prompt',
       includeAssets: ['favicon.svg', 'apple-touch-icon.png', 'data/free-exercises.json'],
       manifest: {
         name: 'EMBER — Keep the fire',
@@ -18,6 +20,9 @@ export default defineConfig({
         theme_color: '#0A0A0C',
         background_color: '#0A0A0C',
         display: 'standalone',
+        id: '.',
+        scope: '.',
+        categories: ['health', 'fitness', 'lifestyle'],
         start_url: '.',
         icons: [
           { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
@@ -26,6 +31,7 @@ export default defineConfig({
         ]
       },
       workbox: {
+        cleanupOutdatedCaches: true,
         // GIF minh họa (11MB) KHÔNG precache — lần đầu mở app phải tải 12MB
         // mới offline-ready là quá nặng trên 4G. Gif tải theo nhu cầu qua
         // runtime cache 'exercise-gifs' (CacheFirst) bên dưới.

@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, todayStr, movingAvg, type Photo } from '../db'
 import { macroPlan, GOAL_OPTIONS, fmtWeeks, cycleInfo, PHASE_LABEL, toDisplayW, fromDisplayW, type Unit } from '../lib/calc'
-import { compressImage } from '../lib/image'
+import { compressImage, imageBlob } from '../lib/image'
+import { useToday } from '../lib/useToday'
 
 function PhotosCard() {
   const photos = useLiveQuery(() => db.photos.orderBy('date').reverse().toArray()) as Photo[] | undefined
@@ -11,7 +12,7 @@ function PhotosCard() {
 
   const urls = useMemo(() => {
     const m = new Map<number, string>()
-    for (const p of photos ?? []) m.set(p.id!, URL.createObjectURL(p.blob))
+    for (const p of photos ?? []) m.set(p.id!, URL.createObjectURL(imageBlob(p.blob)))
     return m
   }, [photos])
   useEffect(() => () => { urls.forEach(u => URL.revokeObjectURL(u)) }, [urls])
@@ -142,7 +143,7 @@ function KcalChart({ logs, target }: { logs: { date: string; kcal: number }[]; t
 }
 
 export default function Progress() {
-  const today = todayStr()
+  const today = useToday()
   const profile = useLiveQuery(() => db.profile.get(1))
   const bodyLogs = useLiveQuery(() => db.bodyLogs.orderBy('date').toArray())
   const kcalQ = useLiveQuery(() => db.nutritionLogs.orderBy('date').toArray())

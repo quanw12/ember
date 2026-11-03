@@ -1,4 +1,4 @@
-import { db, type Exercise } from '../db'
+import { getDatabase, type Exercise, type EmberDB } from '../db'
 
 /**
  * Import thư viện bài tập mở free-exercise-db (CC0, ~876 bài có hình minh họa
@@ -54,9 +54,9 @@ function slugify(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
 }
 
-export async function importLibrary(): Promise<void> {
-  const res = await fetch('data/free-exercises.json')
-  if (!res.ok) return
+export async function importLibrary(db: EmberDB = getDatabase()): Promise<void> {
+  const res = await fetch(`${import.meta.env.BASE_URL}data/free-exercises.json`)
+  if (!res.ok) throw new Error(`Không tải được thư viện (${res.status})`)
   const list = (await res.json()) as FreeExercise[]
   const existing = await db.exercises.toArray()
   const bySlug = new Map(existing.map(e => [e.slug, e]))

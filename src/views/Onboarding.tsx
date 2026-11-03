@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
-import { db, todayStr, type Profile } from '../db'
+import { getDatabase, todayStr, type Profile, type StoredImage } from '../db'
 import { ACTIVITY_OPTIONS, GOAL_OPTIONS, macroPlan, fmtWeeks } from '../lib/calc'
-import { ensureTemplatesFor } from '../data/routines.seed'
 import { compressImage } from '../lib/image'
 import TargetPhoto from '../components/TargetPhoto'
 
@@ -47,7 +46,9 @@ function NumInput({ value, onCommit, ...rest }: {
 export default function Onboarding() {
   const [step, setStep] = useState(0)
   const [d, setD] = useState<Draft>(INITIAL)
-  const [targetPhoto, setTargetPhoto] = useState<Blob | null>(null)
+  const [targetPhoto, setTargetPhoto] = useState<StoredImage | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setD(p => ({ ...p, [k]: v }))
 
   const pickPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -82,9 +83,20 @@ export default function Onboarding() {
     totalSessions <= 2 ? 'sedentary' : totalSessions <= 4 ? 'light' : totalSessions <= 6 ? 'moderate' : totalSessions <= 9 ? 'active' : 'athlete'
 
   const save = async () => {
-    await db.profile.put({ ...d, id: 1, targetPhoto: targetPhoto ?? undefined, createdAt: new Date(), updatedAt: new Date() })
-    await db.bodyLogs.add({ date: todayStr(), weightKg: d.weightKg })
-    await ensureTemplatesFor(d.equipment, d.sex)
+    if (saving || !valid) return
+    setSaving(true)
+    setError('')
+    const source = getDatabase()
+    try {
+      await source.transaction('rw', source.profile, source.bodyLogs, async () => {
+        await source.profile.put({ ...d, id: 1, targetPhoto: targetPhoto ?? undefined, createdAt: new Date(), updatedAt: new Date() })
+        const initial = await source.bodyLogs.where('date').equals(todayStr()).first()
+        if (!initial) await source.bodyLogs.add({ date: todayStr(), weightKg: d.weightKg })
+      })
+      // AppShell creates templates after the exercise seed has completed.
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Chưa lưu được hồ sơ. Kiểm tra dung lượng và thử lại.')
+    } finally { setSaving(false) }
   }
 
   return (
@@ -210,7 +222,8 @@ export default function Onboarding() {
             Nguồn: BMR theo Mifflin-St Jeor (1990) · protein theo vị trí ISSN 2017 (1.6–2.2 g/kg) · tốc độ giảm mỡ an toàn 0.5–1% cân nặng/tuần, lean bulk +200–500 kcal/ngày. Tất cả chỉnh được sau trong Hồ sơ. EMBER không thay thế tư vấn y tế.
           </p>
           <div className="spacer" />
-          <button className="btn" onClick={save}>Bắt đầu dùng EMBER</button>
+          {error && <p className="note" role="alert">{error}</p>}
+          <button className="btn" disabled={saving} onClick={save}>{saving ? 'Đang lưu hồ sơ…' : 'Bắt đầu dùng EMBER'}</button>
           <button className="btn ghost" onClick={() => setStep(2)}>Quay lại</button>
         </>
       )}
