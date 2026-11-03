@@ -2,7 +2,7 @@ name: Verify app
 on:
   pull_request:
   push:
-    branches: ['codex/**']
+    branches: [main, 'feature/**', 'fix/**', 'hotfix/**', 'release/**', 'chore/**', 'ci/**', 'docs/**']
 permissions:
   contents: read
 jobs:
