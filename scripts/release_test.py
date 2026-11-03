@@ -5,6 +5,7 @@ Run with npm run test:release after npm run build.
 """
 import json
 import os
+import urllib.request
 from pathlib import Path
 from playwright.sync_api import sync_playwright, expect
 
@@ -39,6 +40,12 @@ def gps(page, lat, stamp):
     page.evaluate("""([latitude, timestamp]) => window.__gps({ timestamp, coords: {
       latitude, longitude: 106.7, accuracy: 5
     } })""", [lat, stamp])
+
+
+def origin_offline(offline):
+    request = urllib.request.Request('http://127.0.0.1:4173/_test/network', data=b'offline' if offline else b'online', method='POST')
+    with urllib.request.urlopen(request) as response:
+        assert response.status == 204
 
 
 def run(engine, name):
@@ -159,24 +166,31 @@ def run(engine, name):
     # Offline must work with the production service worker on the /ember/ subpath.
     page.evaluate('navigator.serviceWorker.ready.then(() => true)')
     page.wait_for_function('navigator.serviceWorker.controller !== null')
-    # Also block the network at the routing layer: some Chromium builds reset
-    # navigator.onLine during a service-worker navigation in the emulator.
+    assert not errors, errors
+    # A real origin outage also covers WebKit: setOffline rejects even literal
+    # service-worker responses in Playwright (upstream issue #42775).
+    origin_offline(True)
     if name == 'chromium':
         context.route('**/*', lambda route: route.abort())
-    context.set_offline(True)
-    expect(page.locator('.connection')).to_contain_text('Ngoại tuyến')
+        context.set_offline(True)
+        expect(page.locator('.connection')).to_contain_text('Ngoại tuyến')
     page.reload()
     expect(page.locator('.today-heading')).to_be_visible()
-    context.set_offline(False)
-    context.set_offline(True)
-    expect(page.locator('.connection')).to_contain_text('Ngoại tuyến')
+    if name == 'chromium':
+        context.set_offline(False)
+        context.set_offline(True)
+        expect(page.locator('.connection')).to_contain_text('Ngoại tuyến')
     assert page.evaluate("fetch('uncached-network-probe').then(() => false, () => true)"), 'network was not blocked'
     nav(page, 'Chạy')
     expect(page.get_by_role('button', name='BẮT ĐẦU CHẠY', exact=True)).to_be_visible()
     nav(page, 'Hồ sơ')
     expect(page.get_by_role('button', name='Xuất backup JSON', exact=True)).to_be_visible()
     errors.extend(page.evaluate('window.__rejections'))
-    assert not errors, errors
+    # Uncached map tiles are explicitly network-dependent in the product. WebKit
+    # reports their expected SW fetch failures as page errors during the outage.
+    unexpected = [error for error in errors if 'tile.openstreetmap.org/' not in error]
+    assert not unexpected, unexpected
+    origin_offline(False)
     print(f'PASS {name}: production service worker, offline reload and lazy views under /ember/')
     context.close()
     browser.close()

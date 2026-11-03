@@ -39,6 +39,7 @@ npm audit --omit=dev
 - Smoke: onboarding, hai hồ sơ và cách ly, check-in, log cân, kế hoạch, thư viện và các tab.
 - Release: phục vụ bản dist tại `/ember/`, Chromium + WebKit; bố cục 320/390/768/1440px; nhập sai; backup/restore ảnh và Date; file backup hỏng không làm đổi dữ liệu; GPS/pause/resume; đổi tab; reload và khôi phục; bản đồ lịch sử; offline reload và lazy views.
 - Ảnh kiểm chứng ở `output/playwright/` (không đưa vào source control).
+- Kiểm tra offline thật bằng cách cắt phản hồi từ origin server. WebKit không dùng `setOffline()` cho bước navigation do [lỗi Playwright #42775](https://github.com/microsoft/playwright/issues/42775) từ chối cả response có sẵn trong service worker; không bỏ qua kiểm tra offline trên WebKit.
 - CI áp dụng các kiểm tra trên trước deploy và trước đóng gói release. Kết quả local không thay thế QA trên máy thật.
 - `npm audit --omit=dev`: không có cảnh báo trong dependencies production tại lần kiểm tra. Audit đầy đủ còn 10 cảnh báo low/moderate trong chuỗi build Workbox (deepmerge/glob/minimatch và các package phụ thuộc). Không ép downgrade hoặc override major không tương thích để che cảnh báo. Cần tiếp tục theo dõi upstream trước bản stable.
 
