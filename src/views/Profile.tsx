@@ -8,6 +8,9 @@ import { compressImage } from '../lib/image'
 import TargetPhoto from '../components/TargetPhoto'
 import StreakCalendar from '../components/StreakCalendar'
 import { exportBackup, parseBackup, restoreBackup } from '../lib/backup'
+import { Capacitor } from '@capacitor/core'
+import { Filesystem, Directory, Encoding } from '@capacitor/filesystem'
+import { Share } from '@capacitor/share'
 
 const pad = (n: number): string => String(n).padStart(2, '0')
 
@@ -42,11 +45,19 @@ export default function ProfileView({ onUsersChanged }: { onUsersChanged: () => 
     setBackupMessage('')
     try {
       const slot = getActiveSlot()
-      const blob = new Blob([await exportBackup()], { type: 'application/json' })
+      const contents = await exportBackup()
+      const filename = `ember-${(slot?.name ?? 'ho-so').toLowerCase().replace(/[^a-z0-9]+/gi, '-')}-${todayStr()}.json`
+      if (Capacitor.isNativePlatform()) {
+        const file = await Filesystem.writeFile({ path: filename, data: contents, directory: Directory.Cache, encoding: Encoding.UTF8 })
+        await Share.share({ title: 'Lưu backup EMBER', url: file.uri, dialogTitle: 'Lưu hoặc chia sẻ backup' })
+        setBackupMessage('Hãy kiểm tra file đã được lưu vào nơi bạn chọn.')
+        return
+      }
+      const blob = new Blob([contents], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `ember-${(slot?.name ?? 'ho-so').toLowerCase().replace(/[^a-z0-9]+/gi, '-')}-${todayStr()}.json`
+      a.download = filename
       document.body.append(a)
       a.click()
       a.remove()

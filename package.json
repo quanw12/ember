@@ -16,6 +16,10 @@
     "test:release": "python scripts/with_server.py --server \"python scripts/serve_build.py\" --port 4173 -- python scripts/release_test.py"
   },
   "dependencies": {
+    "@capacitor/android": "^8.6.0",
+    "@capacitor/core": "^8.6.0",
+    "@capacitor/filesystem": "^8.1.5",
+    "@capacitor/share": "^8.0.3",
     "@fontsource/be-vietnam-pro": "^5.1.0",
     "@types/leaflet": "^1.9.22",
     "dexie": "^4.0.8",
@@ -25,6 +29,7 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.6.0",
     "@resvg/resvg-js": "^2.6.2",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
