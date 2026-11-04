@@ -15,12 +15,13 @@
   <a href="https://github.com/quanw12/ember/releases"><img src="https://img.shields.io/github/v/release/quanw12/ember?include_prereleases&amp;style=for-the-badge&amp;color=E94E35&amp;label=Beta" alt="Phiên bản phát hành, bao gồm beta"></a>
   <a href="https://github.com/quanw12/ember/actions/workflows/deploy.yml"><img src="https://img.shields.io/github/actions/workflow/status/quanw12/ember/deploy.yml?branch=main&amp;style=for-the-badge&amp;label=Deploy" alt="Trạng thái build và deploy"></a>
   <img src="https://img.shields.io/badge/React-18-20252B?style=for-the-badge&amp;logo=react&amp;logoColor=61DAFB" alt="React 18">
-  <img src="https://img.shields.io/badge/PWA-Android%20%7C%20iPhone%20%7C%20Desktop-20252B?style=for-the-badge" alt="PWA cho Android, iPhone và desktop">
+  <img src="https://img.shields.io/badge/Platforms-Android%20APK%20%7C%20iOS%20IPA%20%7C%20Web-20252B?style=for-the-badge" alt="Android APK, iOS IPA và bản web PWA">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-E94E35?style=for-the-badge" alt="MIT License"></a>
 </p>
 
 <p align="center">
   <b><a href="https://quanw12.github.io/ember/">Mở app</a></b> &nbsp;·&nbsp;
+  <b><a href="#cài-đặt">Tải APK / IPA</a></b> &nbsp;·&nbsp;
   <b><a href="#giao-diện">Giao diện</a></b> &nbsp;·&nbsp;
   <b><a href="#tính-năng">Tính năng</a></b> &nbsp;·&nbsp;
   <b><a href="#cài-đặt">Cài đặt</a></b> &nbsp;·&nbsp;
@@ -123,13 +124,35 @@ flowchart LR
     style F fill:#181C21,stroke:#3B434C,color:#F6F3ED
 ```
 
-**Dữ liệu nằm ở đâu?** React hiển thị app; Dexie lưu nhật ký trong IndexedDB, tách theo từng hồ sơ. Service worker cache phần app để mở offline. File JSON là bản backup do bạn giữ, có thể nhập lại để khôi phục hồ sơ.
+**Dữ liệu nằm ở đâu?** React hiển thị app; Dexie lưu nhật ký trong IndexedDB, tách theo từng hồ sơ. Bản web dùng service worker để cache phần app; bản APK/IPA đóng gói tài nguyên web bằng Capacitor. File JSON là bản backup do bạn giữ, có thể nhập lại để khôi phục hồ sơ. Bản web và app cài bằng APK/IPA có kho dữ liệu riêng.
 
 **Những gì cần mạng:** lần tải đầu, ảnh bài tập hoặc ô bản đồ chưa cache và các link video ngoài. GitHub Pages phục vụ app; một số ảnh đến từ jsDelivr và bản đồ từ OpenStreetMap. Chi tiết ở [Quyền riêng tư](https://quanw12.github.io/ember/privacy.html).
 
 ## Cài đặt
 
-**Dùng ngay tại [quanw12.github.io/ember](https://quanw12.github.io/ember/).** Không cần build mã nguồn.
+EMBER có **APK cho Android**, **IPA chưa ký cho iPhone/iPad** và **bản web PWA**. APK/IPA hiện là bản thử nghiệm. Chọn cách cài phù hợp bên dưới; không cần tự build mã nguồn.
+
+### Android — cài bằng APK
+
+1. Mở [Android preview APK](https://github.com/quanw12/ember/actions/workflows/android-preview.yml), chọn lần chạy thành công có mã nguồn bạn muốn thử.
+2. Trong **Artifacts**, tải `ember-android-debug` rồi giải nén để lấy `app-debug.apk`. GitHub yêu cầu đăng nhập để tải artifact; file được giữ trong 14 ngày theo cấu hình workflow hiện tại.
+3. Mở file APK trên điện thoại. Nếu Android yêu cầu, cho phép ứng dụng đang mở file **cài đặt ứng dụng không rõ nguồn gốc**, sau đó chọn **Cài đặt**.
+4. Mở **EMBER**, tạo hồ sơ hoặc khôi phục backup. Khi dùng tính năng chạy bộ, cấp quyền vị trí cho app.
+
+Đây là APK debug. Nếu bản cập nhật báo không tương thích chữ ký, hãy **xuất backup JSON trước khi gỡ bản cũ**, rồi cài lại và khôi phục dữ liệu. Xem [chi tiết bản Android](docs/ANDROID.md).
+
+### iPhone / iPad — cài bằng IPA
+
+1. Mở [iOS unsigned IPA](https://github.com/quanw12/ember/actions/workflows/ios-sideload.yml), chọn lần chạy thành công có mã nguồn bạn muốn thử.
+2. Trong **Artifacts**, tải `ember-ios-unsigned` rồi giải nén để lấy `ember-ios-unsigned.ipa`. Bạn cần đăng nhập GitHub; artifact được giữ trong 14 ngày.
+3. Dùng công cụ sideload hỗ trợ ký IPA bằng **Apple Account của bạn**, làm theo hướng dẫn của công cụ để ký và cài lên iPhone/iPad. **IPA chưa ký không thể cài trực tiếp bằng cách mở file trong Safari hoặc Files.**
+4. Hoàn tất các bước xác nhận trên thiết bị theo hướng dẫn của công cụ, rồi mở **EMBER** để tạo hồ sơ hoặc khôi phục backup.
+
+Hãy kiểm tra thời hạn chữ ký trong công cụ sideload và tái ký khi cần. **Xuất backup trước khi tái ký hoặc gỡ app**; việc giữ dữ liệu phụ thuộc cách cài và bundle ID. Xem [chi tiết bản iOS](docs/IOS.md).
+
+### Web / PWA — dùng ngay bằng trình duyệt
+
+Mở **[quanw12.github.io/ember](https://quanw12.github.io/ember/)** để dùng ngay hoặc thêm vào màn hình chính:
 
 | Thiết bị | Cách cài |
 | --- | --- |
@@ -138,7 +161,15 @@ flowchart LR
 | **Windows / macOS / Linux** | Mở bằng **Chrome / Edge** → chọn biểu tượng cài đặt trong thanh địa chỉ. |
 | **Tự host** | Tải `ember-<version>-web.zip` trong [Releases](https://github.com/quanw12/ember/releases), giải nén và phục vụ thư mục bằng HTTP/HTTPS, ví dụ `python -m http.server 8080`. |
 
-Lần đầu hãy giữ mạng đến khi app báo **Sẵn sàng offline**. Trên điện thoại, có thể mở phần **Cài app** ở đầu màn hình để xem hướng dẫn.
+Với bản PWA, lần đầu hãy giữ mạng đến khi app báo **Sẵn sàng offline**. Trên điện thoại, phần **Cài app** ở đầu màn hình hướng dẫn thêm bản web vào màn hình chính.
+
+### Chuyển dữ liệu giữa bản web, APK, IPA hoặc thiết bị khác
+
+1. Trong bản đang dùng, vào **Hồ sơ → Xuất backup JSON** và lưu file ở nơi bạn có thể mở lại.
+2. Mở bản mới, tạo hồ sơ nếu được yêu cầu, rồi vào **Hồ sơ → Khôi phục từ backup JSON** và chọn file vừa lưu.
+3. Kiểm tra nhật ký, ảnh và lịch sử chạy đã có đủ trước khi xóa bản cũ.
+
+Dữ liệu không tự đồng bộ giữa các bản hoặc thiết bị. Khi xuất backup bằng app native, hoàn tất thao tác lưu trong bảng chia sẻ và kiểm tra file đã được lưu.
 
 ### Ba bước đầu tiên
 
@@ -148,7 +179,7 @@ Lần đầu hãy giữ mạng đến khi app báo **Sẵn sàng offline**. Trê
 
 ## Trạng thái beta và giới hạn
 
-EMBER hiện phát hành qua **PWA cài bằng link**, chưa có APK, IPA hay bản trên Google Play/App Store.
+EMBER hiện có **PWA cài bằng link**, **APK Android thử nghiệm** và **IPA iOS chưa ký để sideload**. Các bản native được tải qua Actions như hướng dẫn trên; chưa phân phối qua Google Play/App Store.
 
 - **Chạy bộ cần app ở phía trước và màn hình bật.** Bản này chưa cung cấp GPS nền đáng tin cậy khi khóa máy. Bản nháp lưu mỗi năm giây và có thể khôi phục sau khi tải lại.
 - **Dữ liệu chưa tự đồng bộ giữa các máy.** Hãy xuất backup trước khi đổi thiết bị, xoá app hoặc xoá dữ liệu trình duyệt. Các hồ sơ trên cùng máy không phải tài khoản đăng nhập có mật khẩu.
@@ -239,15 +270,18 @@ Push vào `main` chạy build, kiểm thử trình duyệt và audit dependencie
 
 Tag `v*` tạo bản phát hành ZIP và `checksums.txt`. Tag có dấu `-`, ví dụ `v0.3.0-beta.1`, được đánh dấu **prerelease**. Bản beta nằm trong [danh sách Releases](https://github.com/quanw12/ember/releases).
 
+APK và IPA được build riêng bằng workflow [Android preview APK](.github/workflows/android-preview.yml) và [iOS unsigned IPA](.github/workflows/ios-sideload.yml), lưu trong **Actions artifacts** trong 14 ngày. Workflow tag ở trên chỉ đóng gói bản web, không tự đính kèm APK/IPA vào Release. Hướng dẫn build native nằm trong [Android](docs/ANDROID.md) và [iOS](docs/IOS.md).
+
 ## Lộ trình
 
 - [x] PWA cài qua link, giao diện desktop/mobile và hồ sơ riêng trên thiết bị.
 - [x] Gym, chạy bộ, tiến trình, backup/restore ảnh và khôi phục buổi chạy.
 - [x] Kiểm thử Chromium/WebKit và quy trình release tự động.
+- [x] Đóng gói APK Android thử nghiệm và IPA iOS chưa ký qua Capacitor/GitHub Actions.
 - [ ] Kiểm chứng beta trên nhiều iPhone và Android thật.
 - [ ] Cải thiện trải nghiệm backup và chuyển dữ liệu giữa các máy.
 - [ ] Cân nhắc đồng bộ theo lựa chọn của người dùng.
-- [ ] Chuẩn bị bản native và phân phối qua Google Play/App Store sau beta.
+- [ ] Hoàn thiện bản native và chuẩn bị phân phối qua Google Play/App Store sau beta.
 
 ## Đóng góp
 
