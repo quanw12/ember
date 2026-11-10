@@ -28,6 +28,44 @@ def expect_text(page, text: str, label: str) -> None:
     ok(label, visible, f'— không thấy "{text}"')
 
 
+def expect_coach(page, text: str, label: str) -> None:
+    """Chỉ đọc bong bóng Coach, tránh trùng số cân trên trang Hôm nay."""
+    loc = page.locator('.coach-msg').filter(has_text=text)
+    visible = False
+    for _ in range(20):
+        try:
+            if loc.first.is_visible():
+                visible = True
+                break
+        except Exception:
+            pass
+        page.wait_for_timeout(250)
+    ok(label, visible, f'— không thấy "{text}" trong Coach')
+
+
+def drop_expected_backend_noise(page) -> None:
+    """Bỏ lỗi console của probe PocketBase khi UI đã báo máy chủ không phản hồi."""
+    try:
+        page.wait_for_function(
+            """() => document.querySelector('[data-server-state="down"], [data-server-state="up"], [data-server-state="unset"], [data-server-state="loopback"]')""",
+            timeout=8000,
+        )
+    except Exception:
+        pass
+    if page.locator('[data-server-state="down"]').count() == 0:
+        return
+    kept = []
+    for entry in errors:
+        noisy = (
+            entry.startswith('CONSOLE-ERROR:')
+            and 'Failed to load resource' in entry
+            and any(token in entry for token in ('ERR_CONNECTION_REFUSED', 'ERR_FAILED', 'ERR_CONNECTION_RESET'))
+        )
+        if not noisy:
+            kept.append(entry)
+    errors[:] = kept
+
+
 with sync_playwright() as p:
     browser = p.chromium.launch(headless=True)
     page = browser.new_page(viewport={'width': 390, 'height': 844})  # cỡ iPhone 12
@@ -142,6 +180,42 @@ with sync_playwright() as p:
     page.wait_for_timeout(600)
     expect_text(page, 'Quân', 'Quay lại Hôm nay vẫn ổn')
 
+    # 9) Coach đọc nhật ký thật, trước khi có buổi tập hoàn thành
+    page.get_by_role('button', name='Mở Coach').click()
+    expect_coach(page, 'Chưa có buổi tập hoàn thành', 'Coach: chưa có buổi hoàn thành')
+    expect_coach(page, 'Cân gần nhất: 71 kg', 'Coach: cân 71 kg từ nhật ký')
+    page.locator('.coach-panel').get_by_role('button', name='Đóng').click()
+
+    # 10) Buổi tập: RPE và kỹ thuật, rồi Coach đọc volume vừa ghi
+    page.locator('.tab').filter(has_text='Gym').click()
+    page.click('button:has-text("Thư viện")')
+    page.wait_for_selector('button:has-text("BẮT ĐẦU BUỔI TẬP MỚI")')
+    page.click('button:has-text("BẮT ĐẦU BUỔI TẬP MỚI")')
+    page.wait_for_selector('button:has-text("+ Thêm bài tập")')
+    page.click('button:has-text("+ Thêm bài tập")')
+    page.get_by_role('heading', name='Thêm bài tập').wait_for()
+    page.get_by_label('Tìm bài tập để thêm').fill('Bench Press')
+    page.locator('button').filter(has_text='Bench Press').first.click()
+    page.get_by_label('Hiệp 1 kg').fill('60')
+    page.get_by_label('Hiệp 1 lần').fill('8')
+    page.get_by_label('Hiệp 1 RPE').fill('8')
+    page.get_by_label('Hiệp 1 kỹ thuật').select_option('drop')
+    page.get_by_label('Hoàn thành hiệp 1').click()
+    page.wait_for_timeout(400)
+    ok('Buổi tập: không tràn ngang', page.evaluate('() => document.documentElement.scrollWidth <= innerWidth'))
+    page.once('dialog', lambda dialog: dialog.accept())
+    page.click('button:has-text("KẾT THÚC BUỔI")')
+    page.wait_for_selector('button:has-text("Xong")')
+    expect_text(page, '480', 'Buổi tập: volume 60×8 = 480')
+    page.click('button:has-text("Xong")')
+    page.get_by_role('button', name='Mở Coach').click()
+    page.get_by_role('button', name='Xem tiến độ của tôi').click()
+    expect_coach(page, 'Buổi gần nhất', 'Coach: đọc buổi vừa xong')
+    expect_coach(page, '480', 'Coach: volume 480')
+    expect_coach(page, 'không thay huấn luyện viên', 'Coach: gợi ý đọc nhật ký')
+    page.locator('.coach-panel').get_by_role('button', name='Đóng').click()
+
+    drop_expected_backend_noise(page)
     errors.extend(page.evaluate('window.__errs'))
     browser.close()
 

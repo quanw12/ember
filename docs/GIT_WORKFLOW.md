@@ -9,6 +9,6 @@
 
 Dùng chữ thường, dấu gạch nối; mỗi nhiệm vụ có commit riêng theo Conventional Commits (`feat:`, `fix:`, `test:`, `docs:`, `ci:`, `chore:`). Push nhánh và mở PR để review, kiểm tra CI trước khi merge. Nhánh phụ thuộc dùng PR xếp tầng với base là nhánh chứa phần phụ thuộc; khi base đã merge cần cập nhật base PR tiếp theo về main.
 
-Chuỗi công việc native/tài khoản hiện tại: `main` → `feature/android-prototype` → `feature/ios-sideload` → `feature/auth-local`. Đây là các nhánh thử nghiệm, chưa tự động phát hành bản production. CI kiểm tra các prefix ở trên và mọi pull request.
+`feature/android-prototype`, `feature/ios-sideload` và `feature/auth-local` đã merge vào main. Các nhánh đó không tự phát hành bản production. CI kiểm tra các prefix ở trên và mọi pull request.
 
 Ngày 2026-11-03 đã đổi toàn bộ nhánh `feat/*` thành `feature/*`, ba nhánh native/auth sang `feature/*` và nhánh chuẩn bị beta sang `release/0.3.0-beta.1`. Nhánh chính, các nhánh `fix/*`, `ci/*`, `chore/*` giữ nguyên tên. Khi cập nhật clone khác: `git branch -m <ten-cu> <ten-moi>`, `git fetch origin --prune`, rồi `git branch -u origin/<ten-moi> <ten-moi>`.

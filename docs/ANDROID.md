@@ -18,6 +18,8 @@ Windows dùng `gradlew.bat assembleDebug`. APK ở `android/app/build/outputs/ap
 
 APK debug được ký bằng khóa debug của môi trường build, dùng để thử nghiệm; không dùng làm bản phát hành lâu dài. Không cài đè APK được ký bằng khóa khác. Bản chính thức cần khóa release do chủ dự án giữ an toàn, cấu hình sao lưu khóa và versionCode tăng dần.
 
+Manifest bật `usesCleartextTraffic` để điện thoại gọi PocketBase bằng HTTP trong cùng mạng nhà. Trong app, mở Hồ sơ và nhập địa chỉ máy tính, ví dụ `http://192.168.1.20:8090`. `127.0.0.1` trên điện thoại là chính điện thoại. Ra ngoài Wi-Fi nhà thì dùng `https://`. Không ghi sẵn URL production vào APK. Bản trong repo này chưa được cài và kiểm tra trên máy Android thật.
+
 ## Chuyển dữ liệu và kiểm tra thiết bị
 
 Trong PWA, vào Hồ sơ → Xuất backup JSON. Trong APK, tạo hồ sơ mới, vào Hồ sơ → Khôi phục từ backup JSON. Hai bản có bộ nhớ riêng, không tự đồng bộ. Khi xuất backup từ Android, chọn ứng dụng hoặc vị trí lưu trong bảng chia sẻ, sau đó kiểm tra file đã được lưu.

@@ -1,15 +1,34 @@
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, todayStr, type SetEntry } from '../../db'
 import ExercisePicker from './ExercisePicker'
 import { REST_BY_MUSCLE } from '../../data/exercises.seed'
 
+type Technique = NonNullable<SetEntry['technique']>
+
 interface Row {
   id?: number
   kg: string
   reps: string
+  rpe: string
+  technique: Technique | ''
   done: boolean
   prev: string
+}
+
+const TECHNIQUES: { id: Technique; label: string }[] = [
+  { id: 'warmup', label: 'Khởi động' },
+  { id: 'drop', label: 'Drop set' },
+  { id: 'superset', label: 'Superset' },
+  { id: 'restpause', label: 'Rest-pause' },
+  { id: 'amrap', label: 'AMRAP' }
+]
+
+function parseRpe(raw: string): number | undefined {
+  if (!raw.trim()) return undefined
+  const n = Number(raw)
+  if (!Number.isInteger(n) || n < 1 || n > 10) return undefined
+  return n
 }
 
 /** Các set đã hoàn thành của bài này trong những buổi TRƯỚC, gộp theo buổi gần nhất. */
@@ -25,7 +44,7 @@ async function prevSetsFor(slug: string, currentSessionId: number): Promise<stri
   return done
     .filter(s => s.sessionId === latest.id)
     .sort((a, b) => a.idx - b.idx)
-    .map(s => `${s.kg}×${s.reps}`)
+    .map(s => s.rpe != null ? `${s.kg}×${s.reps} @${s.rpe}` : `${s.kg}×${s.reps}`)
 }
 
 function parsePrev(prev: string): { kg: string; reps: string } {
@@ -81,7 +100,10 @@ export default function SessionRunner({ id, onDone }: { id: number; onDone: () =
       const existing = await db.sets.where('sessionId').equals(id).toArray()
       const grouped: Record<string, Row[]> = {}
       for (const st of [...existing].sort((a, b) => a.idx - b.idx)) {
-        ;(grouped[st.exerciseSlug] ??= []).push({ id: st.id, kg: String(st.kg), reps: String(st.reps), done: st.done, prev: '' })
+        ;(grouped[st.exerciseSlug] ??= []).push({
+          id: st.id, kg: String(st.kg), reps: String(st.reps), done: st.done, prev: '',
+          rpe: st.rpe != null ? String(st.rpe) : '', technique: st.technique ?? ''
+        })
       }
       const prevs: Record<string, string[]> = {}
       for (const slug of order) prevs[slug] = await prevSetsFor(slug, id)
@@ -115,7 +137,7 @@ export default function SessionRunner({ id, onDone }: { id: number; onDone: () =
   const makeRow = (slug: string, idx: number, prev: string[]): Row => {
     const p = prev[idx] ?? prev[prev.length - 1] ?? ''
     const parsed = parsePrev(p)
-    return { kg: parsed.kg, reps: parsed.reps, done: false, prev: p }
+    return { kg: parsed.kg, reps: parsed.reps, rpe: '', technique: '', done: false, prev: p }
   }
 
   const addSet = (slug: string) => {
@@ -134,15 +156,30 @@ export default function SessionRunner({ id, onDone }: { id: number; onDone: () =
     })
   }
 
+  const writeMeta = async (setId: number, rpeRaw: string, technique: Technique | '') => {
+    const rpe = parseRpe(rpeRaw)
+    await db.sets.where('id').equals(setId).modify(row => {
+      if (rpe == null) delete row.rpe
+      else row.rpe = rpe
+      if (!technique) delete row.technique
+      else row.technique = technique
+    })
+  }
+
   const tick = async (slug: string, idx: number) => {
     const row = rows[slug]?.[idx]
     if (!row) return
     if (!row.done) {
       const kg = Number(row.kg), reps = Number(row.reps)
       if (!(kg >= 0 && reps > 0)) return
+      const rpe = parseRpe(row.rpe)
+      const technique = row.technique || undefined
       const entry: SetEntry = { sessionId: id, exerciseSlug: slug, idx, kg, reps, done: true, ts: new Date() }
+      if (rpe != null) entry.rpe = rpe
+      if (technique) entry.technique = technique
       if (row.id != null) {
         await db.sets.update(row.id, { kg, reps, done: true })
+        await writeMeta(row.id, row.rpe, row.technique)
         updateRow(slug, idx, { done: true })
       } else {
         const newId = await db.sets.add(entry)
@@ -231,7 +268,8 @@ export default function SessionRunner({ id, onDone }: { id: number; onDone: () =
             </thead>
             <tbody>
               {(rows[slug] ?? []).map((row, idx) => (
-                <tr key={idx} style={{ borderTop: '1px solid var(--line)' }}>
+                <Fragment key={idx}>
+                <tr style={{ borderTop: '1px solid var(--line)' }}>
                   <td style={{ padding: '8px 0', color: row.done ? 'var(--ok)' : 'var(--text-2)', fontWeight: 600 }}>{idx + 1}</td>
                   <td style={{ padding: '8px 0', color: 'var(--text-3)', fontSize: 12 }}>{row.prev}</td>
                   <td style={{ padding: '4px 6px 4px 0' }}>
@@ -251,6 +289,35 @@ export default function SessionRunner({ id, onDone }: { id: number; onDone: () =
                     </button>
                   </td>
                 </tr>
+                <tr>
+                  <td colSpan={5}>
+                    <div className="set-meta">
+                      <label>
+                        RPE
+                        <input type="number" inputMode="numeric" min={1} max={10} step={1} placeholder="1–10" value={row.rpe}
+                          aria-label={`Hiệp ${idx + 1} RPE`}
+                          onChange={e => {
+                            const rpe = e.target.value
+                            updateRow(slug, idx, { rpe })
+                            if (row.done && row.id != null) void writeMeta(row.id, rpe, row.technique)
+                          }} />
+                      </label>
+                      <label>
+                        Kỹ thuật
+                        <select aria-label={`Hiệp ${idx + 1} kỹ thuật`} value={row.technique}
+                          onChange={e => {
+                            const technique = e.target.value as Technique | ''
+                            updateRow(slug, idx, { technique })
+                            if (row.done && row.id != null) void writeMeta(row.id, row.rpe, technique)
+                          }}>
+                          <option value="">Không gắn</option>
+                          {TECHNIQUES.map(item => <option key={item.id} value={item.id}>{item.label}</option>)}
+                        </select>
+                      </label>
+                    </div>
+                  </td>
+                </tr>
+                </Fragment>
               ))}
             </tbody>
           </table>

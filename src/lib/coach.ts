@@ -1,6 +1,7 @@
-import type { Exercise, Profile, RoutineDay } from '../db'
+import type { BodyLog, Exercise, Profile, RoutineDay, Run, Session, SetEntry } from '../db'
+import { todayStr } from '../db'
 import { ALLOWED_EQUIPMENT } from '../data/routines.seed'
-import { exNames } from './gym'
+import { exNames, streakOf, workoutDates } from './gym'
 
 /**
  * EMBER Coach — chatbot offline 100% (không server, không API key).
@@ -31,12 +32,64 @@ export type CoachState =
   | { flow: 'today-focus' }
   | { flow: 'today-preview'; draft: { focus: string; slugs: string[] } }
 
+export interface CoachFacts {
+  weightKg: number
+  streak: number
+  goal: Profile['goal']
+  lastSession: { name: string; sets: number; volume: number } | null
+}
+
 export interface CoachCtx {
   sex: Profile['sex']
   equipment: Profile['equipment']
   kcal: number
   proteinG: number
   exercises: Exercise[]
+  facts: CoachFacts
+}
+
+const GOAL_LABEL: Record<Profile['goal'], string> = {
+  cut: 'giảm mỡ', bulk: 'tăng cơ', maintain: 'giữ cân', recomp: 'tái tạo'
+}
+
+function formatKg(n: number): string {
+  const rounded = Math.round(n * 10) / 10
+  return Number.isInteger(rounded) ? String(rounded) : String(rounded)
+}
+
+export function coachFactsFrom(input: {
+  profile: Profile
+  sessions: Session[]
+  sets: SetEntry[]
+  runs: Run[]
+  checkins: { date: string }[]
+  bodyLogs: BodyLog[]
+}): CoachFacts {
+  const weighed = input.bodyLogs
+    .filter(row => row.weightKg != null)
+    .sort((a, b) => b.date.localeCompare(a.date))[0]
+  const finished = input.sessions
+    .filter(session => session.endedAt != null && session.id != null)
+    .sort((a, b) => b.endedAt!.getTime() - a.endedAt!.getTime())
+  const last = finished[0]
+  const doneSets = last ? input.sets.filter(set => set.done && set.sessionId === last.id) : []
+  return {
+    weightKg: weighed?.weightKg ?? input.profile.weightKg,
+    streak: streakOf(workoutDates(input.sessions, input.runs, input.checkins), todayStr()),
+    goal: input.profile.goal,
+    lastSession: last ? {
+      name: last.name,
+      sets: doneSets.length,
+      volume: Math.round(doneSets.reduce((sum, set) => sum + set.kg * set.reps, 0))
+    } : null
+  }
+}
+
+export function coachFactsLine(facts: CoachFacts): string {
+  const weight = `Cân gần nhất: ${formatKg(facts.weightKg)} kg.`
+  if (!facts.lastSession) return `Chưa có buổi tập hoàn thành. ${weight}`
+  const session = facts.lastSession
+  return `Buổi gần nhất: ${session.name}, ${session.sets} set, ${session.volume} kg×lần. ${weight}`
 }
 
 /* ----------------- Kho bài theo kiểu buổi (slug từ seed) ----------------- */
@@ -262,10 +315,17 @@ export function coachRespond(rawInput: string, state: CoachState, ctx: CoachCtx)
     }
   }
   if (/(hôm nay|đổi buổi|thay buổi|buổi.*nay|skip)/.test(low)) {
+    const recent = ctx.facts.lastSession
+      ? ` Buổi gần nhất là "${ctx.facts.lastSession.name}" (${ctx.facts.lastSession.sets} set, ${ctx.facts.lastSession.volume} kg×lần).`
+      : ''
     return {
       state: { flow: 'today-focus' },
-      msgs: [bot('Buổi hôm nay bạn muốn nhắm vào đâu?', { chips: [...TODAY_FOCUS_OPTIONS] })]
+      msgs: [bot(`Buổi hôm nay bạn muốn nhắm vào đâu?${recent}`, { chips: [...TODAY_FOCUS_OPTIONS] })]
     }
+  }
+
+  if (/(tiến độ|streak|giữ lửa|chuỗi|buổi trước|buổi gần|cân nặng|cân của)/.test(low)) {
+    return { state, msgs: [bot(progressLine(ctx), { chips: MENU_CHIPS })] }
   }
 
   /* ---------- FAQ ---------- */
@@ -300,11 +360,15 @@ export function coachRespond(rawInput: string, state: CoachState, ctx: CoachCtx)
   return { state: { flow: 'idle' }, msgs: [bot('Mình có thể giúp:', { chips: MENU_CHIPS })] }
 }
 
-const MENU_CHIPS = ['Lên lịch tập tuần', 'Đổi buổi hôm nay', 'Protein ăn bao nhiêu?', 'Giảm mỡ thế nào?']
+const MENU_CHIPS = ['Lên lịch tập tuần', 'Đổi buổi hôm nay', 'Xem tiến độ của tôi', 'Protein ăn bao nhiêu?']
 
-export function coachGreeting(name: string | undefined, sex: Profile['sex']): CoachMsg {
+function progressLine(ctx: CoachCtx): string {
+  return `Lửa hiện tại: ${ctx.facts.streak} ngày. ${coachFactsLine(ctx.facts)} Mục tiêu hồ sơ: ${GOAL_LABEL[ctx.facts.goal]}. Gợi ý này đọc nhật ký trên máy, không thay huấn luyện viên.`
+}
+
+export function coachGreeting(name: string | undefined, ctx: CoachCtx): CoachMsg {
   return bot(
-    `Chào ${name ?? 'bạn'}! Mình là EMBER Coach — tư vấn offline ngay trên máy bạn.${sex === 'female' ? ' Chế độ nữ đã bật: lịch sẽ có lựa chọn thiên về mông & chân, kèm gợi ý theo chu kỳ.' : ''} Muốn bắt đầu từ đâu?`,
+    `Chào ${name ?? 'bạn'}! Mình là EMBER Coach — tư vấn offline ngay trên máy bạn.${ctx.sex === 'female' ? ' Chế độ nữ đã bật: lịch sẽ có lựa chọn thiên về mông & chân, kèm gợi ý theo chu kỳ.' : ''} ${coachFactsLine(ctx.facts)} Muốn bắt đầu từ đâu?`,
     { chips: MENU_CHIPS }
   )
 }

@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db, getActiveSlot, type RoutineDay } from '../db'
 import { macroPlan } from '../lib/calc'
 import {
-  coachGreeting, coachRespond,
+  coachFactsFrom, coachGreeting, coachRespond,
   type CoachCtx, type CoachMsg, type CoachState
 } from '../lib/coach'
 
@@ -12,6 +12,11 @@ let idSeq = 100_000
 export default function CoachChat({ onClose }: { onClose: () => void }) {
   const profile = useLiveQuery(() => db.profile.get(1))
   const exercises = useLiveQuery(() => db.exercises.toArray())
+  const sessions = useLiveQuery(() => db.sessions.toArray())
+  const sets = useLiveQuery(() => db.sets.toArray())
+  const runs = useLiveQuery(() => db.runs.toArray())
+  const checkins = useLiveQuery(() => db.checkins.toArray())
+  const bodyLogs = useLiveQuery(() => db.bodyLogs.toArray())
   const activeRow = useLiveQuery(() => db.settings.get('activeRoutineId'))
   const routines = useLiveQuery(() => db.routines.toArray())
 
@@ -23,28 +28,29 @@ export default function CoachChat({ onClose }: { onClose: () => void }) {
   const greeted = useRef(false)
 
   // Chào khi đã nạp đủ context (chỉ 1 lần).
-  useEffect(() => {
-    if (!greeted.current && profile && exercises) {
-      greeted.current = true
-      setMsgs([coachGreeting(getActiveSlot()?.name, profile.sex)])
-    }
-  }, [profile, exercises])
-
-  useEffect(() => {
-    listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' })
-  }, [msgs])
-
   const ctx: CoachCtx | null = (() => {
-    if (!profile || !exercises) return null
+    if (!profile || !exercises || !sessions || !sets || !runs || !checkins || !bodyLogs) return null
     const plan = macroPlan(profile)
     return {
       sex: profile.sex,
       equipment: profile.equipment,
       kcal: plan.kcal,
       proteinG: plan.proteinG,
-      exercises
+      exercises,
+      facts: coachFactsFrom({ profile, sessions, sets, runs, checkins, bodyLogs })
     }
   })()
+
+  useEffect(() => {
+    if (!greeted.current && ctx) {
+      greeted.current = true
+      setMsgs([coachGreeting(getActiveSlot()?.name, ctx)])
+    }
+  }, [ctx])
+
+  useEffect(() => {
+    listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' })
+  }, [msgs])
 
   const lastChips = [...msgs].reverse().find(m => m.chips)?.chips ?? []
 

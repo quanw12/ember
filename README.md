@@ -182,7 +182,7 @@ Dữ liệu không tự đồng bộ giữa các bản hoặc thiết bị. Khi 
 EMBER hiện có **PWA cài bằng link**, **APK Android thử nghiệm** và **IPA iOS chưa ký để sideload**. Các bản native được tải qua Actions như hướng dẫn trên; chưa phân phối qua Google Play/App Store.
 
 - **Chạy bộ cần app ở phía trước và màn hình bật.** Bản này chưa cung cấp GPS nền đáng tin cậy khi khóa máy. Bản nháp lưu mỗi năm giây và có thể khôi phục sau khi tải lại.
-- **Dữ liệu chưa tự đồng bộ giữa các máy.** Hãy xuất backup trước khi đổi thiết bị, xoá app hoặc xoá dữ liệu trình duyệt. Các hồ sơ trên cùng máy không phải tài khoản đăng nhập có mật khẩu.
+- **Dữ liệu chưa tự đồng bộ giữa các máy.** Hãy xuất backup trước khi đổi thiết bị, xoá app hoặc xoá dữ liệu trình duyệt. Hồ sơ trên máy không cần mật khẩu. Tài khoản email chỉ dùng khi bạn nhập địa chỉ máy chủ; đăng xuất không xoá nhật ký trên thiết bị.
 - **Nhắc nhở chỉ chạy khi app mở.** Có thể xuất lịch `.ics` vào ứng dụng Lịch để nhận nhắc khi đóng app. Bản này chưa tích hợp Web Push nền.
 - **Ảnh và bản đồ chưa tải cần mạng.** GIF minh họa được cache theo nhu cầu, không tải toàn bộ ở lần mở đầu.
 - **Kiểm thử trình duyệt không thay thế máy thật.** Beta đã có kiểm tra Chromium/WebKit; vẫn cần thử cài đặt, quyền GPS, backup qua Files và cập nhật trên iPhone/Android vật lý.
@@ -192,7 +192,7 @@ Xem [báo cáo ổn định và phát hành](RELEASE-READINESS.md) để biết 
 
 ## Phát triển
 
-Các nhánh đang phát triển: [`feature/android-prototype`](https://github.com/quanw12/ember/tree/feature/android-prototype) cho APK, [`feature/ios-sideload`](https://github.com/quanw12/ember/tree/feature/ios-sideload) cho IPA chưa ký và [`feature/auth-local`](https://github.com/quanw12/ember/tree/feature/auth-local) cho tài khoản/máy chủ riêng. Hướng dẫn: [Android](docs/ANDROID.md), [iOS](docs/IOS.md), [tài khoản local](docs/ACCOUNTS.md). Đây là các thay đổi thử nghiệm, chưa thay thế bản PWA công khai.
+Android, iOS sideload và tài khoản local đã nằm trên `main`. Hướng dẫn: [Android](docs/ANDROID.md), [iOS](docs/IOS.md), [tài khoản](docs/ACCOUNTS.md). Bản PWA công khai không gắn sẵn máy chủ. Muốn đăng nhập thì nhập URL trong app. Hồ sơ trên máy vẫn dùng được mà không cần mật khẩu. Đăng xuất không khoá dữ liệu local. Bản sao trên máy chủ là thao tác thủ công, chưa tự đồng bộ liên tục. Nhắc nhở chỉ chạy khi app đang mở.
 
 Yêu cầu: **Node.js 22.12+ hoặc Node.js 24 LTS**, npm. Các lệnh dưới đây chạy từ thư mục gốc của repo.
 

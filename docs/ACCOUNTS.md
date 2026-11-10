@@ -1,6 +1,8 @@
-# Nhiệm vụ tài khoản và máy chủ local
+# Tài khoản và máy chủ local
 
-Nhánh `feature/auth-local` dựa trên `feature/ios-sideload`, tiếp nối `feature/android-prototype`. Chưa merge vào main hoặc thay bản beta công khai. Các commit native, auth/schema và kiểm thử được tách riêng để review.
+Tài khoản local đã nằm trên `main`. Bản PWA công khai không gắn sẵn URL máy chủ. App chỉ gọi PocketBase khi có địa chỉ: biến `VITE_BACKEND_URL` lúc build, hoặc địa chỉ người dùng lưu trên máy (ưu tiên hơn). Ô **Địa chỉ máy chủ** nằm ở màn chào và tab Hồ sơ.
+
+Khi máy chủ tắt, app hiện dòng *Máy chủ không phản hồi. Bạn vẫn tập được trên máy này.* và không chặn nhật ký local. `npm run test:smoke` vẫn qua trong trường hợp đó. Nút Google chỉ bật khi máy chủ đang chạy và báo provider `google`.
 
 ## Khởi động trên Windows
 
@@ -37,7 +39,9 @@ Nút Google tự khả dụng khi backend công bố provider đã bật. Trên 
 
 ## Điện thoại và public
 
-`127.0.0.1` trong APK/IPA là điện thoại, không phải PC. Cấu hình hiện tại chỉ phục vụ browser trên PC để kiểm thử. Muốn điện thoại ngoài mạng nhà đăng nhập cần HTTPS trỏ tới PC, cấu hình firewall/proxy, Google redirect URI và build app với URL đó. Không mở admin dashboard thẳng ra Internet. Không phân phối APK/IPA với endpoint localhost rồi coi là đã kết nối tài khoản.
+Trên điện thoại, `localhost`, `127.0.0.1`, `0.0.0.0` và `::1` là chính máy đó, không phải PC đang chạy PocketBase. App không probe các địa chỉ này trong bản native. Nhập `https://` của máy chủ, hoặc IP máy tính trong cùng Wi-Fi, ví dụ `http://192.168.1.20:8090`.
+
+Android cho phép HTTP cleartext để gọi PocketBase trong mạng nhà. iOS bật `NSAllowsLocalNetworking` cho cùng mục đích. Địa chỉ HTTP công khai, ngoài LAN, dễ bị hệ điều hành chặn; lúc đó dùng `https://`. Không nhúng URL production giả vào bản build. Không mở trang quản trị ra Internet. Google login vẫn tắt cho đến khi máy chủ báo provider và redirect URI khớp domain HTTPS của bạn.
 
 ## Kiểm tra
 
