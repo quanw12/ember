@@ -11,10 +11,9 @@ import '../../planner.css'
 const muscleLabel = (id: string): string => MUSCLES.find(m => m.id === id)?.label ?? id
 
 /**
- * Lập lịch tuần: chọn ngày → chọn nhóm cơ trên bản đồ cơ thể → chọn bài từ gợi ý.
- * Hệ thống chỉ XẾP HẠNG bài để gợi ý, không tự chọn sẵn bài nào.
+ * Lập lịch tuần: chọn ngày → chọn nhóm cơ → lấy bài gợi ý một lần, hoặc tự chọn.
  * Lưu xong: tạo kế hoạch mới, đặt làm kế hoạch hoạt động, ghi weeklyPlannedOn
- * để tắt nhắc cuối tuần.
+ * để tắt nhắc cuối tuần. Buổi tập vẫn bắt đầu được khi lịch trống.
  */
 export default function WeeklyPlanner({ onBack }: { onBack: () => void }) {
   const exercises = useLiveQuery(() => db.exercises.toArray())
@@ -67,6 +66,22 @@ export default function WeeklyPlanner({ onBack }: { onBack: () => void }) {
     setDaySlugs(prev => ({ ...prev, [wd]: arr }))
   }
   const sortCur = () => setDaySlugs(prev => ({ ...prev, [wd]: sortDaySlugs(curSlugs, exs) }))
+  const suggestSlugs = (muscles: string[]) => {
+    const picked: string[] = []
+    for (const muscle of muscles) {
+      for (const item of recommendFor(muscle, exs, profile.equipment).slice(0, 2)) {
+        if (!picked.includes(item.ex.slug)) picked.push(item.ex.slug)
+        if (picked.length >= 5) return sortDaySlugs(picked, exs)
+      }
+    }
+    return sortDaySlugs(picked, exs)
+  }
+  const fillDay = () => setDaySlugs(prev => ({ ...prev, [wd]: suggestSlugs(curMuscles) }))
+  const fillAll = () => setDaySlugs(prev => {
+    const next = { ...prev }
+    for (const d of days) next[d] = suggestSlugs(dayMuscles[d] ?? [])
+    return next
+  })
 
   const goStep2 = () => {
     // mỗi ngày đã chọn mặc định chưa có nhóm cơ — người dùng bấm chọn trên bản đồ
@@ -177,7 +192,9 @@ export default function WeeklyPlanner({ onBack }: { onBack: () => void }) {
         <>
           <div className="card">
             <div className="eyebrow">3 · {WEEKDAYS[wd - 1].toUpperCase()} — CHỌN BÀI</div>
-            <div className="meta" style={{ marginTop: 4 }}>Nguyên tắc thứ tự: compound lớn đầu buổi → isolation giữa buổi → core/cơ nhỏ cuối buổi. Bạn tự bấm chọn, hệ thống không chọn sẵn bài nào.</div>
+            <div className="meta" style={{ marginTop: 4 }}>Lấy bài gợi ý một lần, hoặc tự chọn bên dưới. Compound lớn đứng trước, core và cơ nhỏ để cuối buổi.</div>
+            <button type="button" className="btn" style={{ marginTop: 12 }} onClick={fillDay}>Lấy bài gợi ý cho ngày này</button>
+            <button type="button" className="btn ghost" onClick={fillAll}>Lấy bài gợi ý cho mọi ngày</button>
 
             <div style={{ marginTop: 10 }}>
               <b style={{ fontSize: 14 }}>Đã chọn ({curSlugs.length})</b>

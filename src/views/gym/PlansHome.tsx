@@ -47,6 +47,7 @@ export default function PlansHome({ onStart, onEdit, onOpenPlanner }: {
       <div style={{ paddingTop: 14 }}>
         <div className="eyebrow">KẾ HOẠCH</div>
         <h1 className="h">Tuần này đi theo lịch.</h1>
+        <div className="meta">Kế hoạch và thư viện để bạn tự xem. Vào buổi chỉ cần bấm bắt đầu, tập xong thì kết thúc.</div>
       </div>
 
       <TodayPlanCard onStart={onStart} />

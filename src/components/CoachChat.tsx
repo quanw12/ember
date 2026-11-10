@@ -9,7 +9,10 @@ import {
 
 let idSeq = 100_000
 
-export default function CoachChat({ onClose }: { onClose: () => void }) {
+export default function CoachChat({ onClose, onOpenMuscle }: {
+  onClose: () => void
+  onOpenMuscle: (muscle: string) => void
+}) {
   const profile = useLiveQuery(() => db.profile.get(1))
   const exercises = useLiveQuery(() => db.exercises.toArray())
   const sessions = useLiveQuery(() => db.sessions.toArray())
@@ -115,6 +118,9 @@ export default function CoachChat({ onClose }: { onClose: () => void }) {
                 </ul>
               )}
               {m.todaySlugs && <div className="coach-plan-name">{m.todaySlugs.join(' · ')}</div>}
+              {m.link && (
+                <button type="button" className="coach-link" onClick={() => onOpenMuscle(m.link!.muscle)}>{m.link.label}</button>
+              )}
             </div>
           ))}
           {busy && <div className="coach-msg bot" style={{ opacity: .5 }}>…</div>}

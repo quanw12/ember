@@ -2,6 +2,7 @@ import type { BodyLog, Exercise, Profile, RoutineDay, Run, Session, SetEntry } f
 import { todayStr } from '../db'
 import { ALLOWED_EQUIPMENT } from '../data/routines.seed'
 import { exNames, streakOf, workoutDates } from './gym'
+import { detectMuscle, exercisesForRegion, MUSCLE_INFO } from './muscles'
 
 /**
  * EMBER Coach — chatbot offline 100% (không server, không API key).
@@ -22,6 +23,7 @@ export interface CoachMsg {
   planLines?: string[]
   planName?: string
   todaySlugs?: string[]
+  link?: { muscle: string; label: string }
 }
 
 export type CoachState =
@@ -307,6 +309,11 @@ export function coachRespond(rawInput: string, state: CoachState, ctx: CoachCtx)
     return { state: { flow: 'today-focus' }, msgs: [bot('Buổi hôm nay nhắm vào đâu?', { chips: [...TODAY_FOCUS_OPTIONS] })] }
   }
 
+  if (state.flow === 'idle') {
+    const muscle = detectMuscle(low)
+    if (muscle) return muscleReply(muscle, ctx)
+  }
+
   /* ---------- mở luồng từ ý định tự do ---------- */
   if (/(lịch|kế hoạch|lên lịch|schedule|plan|tuần)/.test(low)) {
     return {
@@ -361,6 +368,28 @@ export function coachRespond(rawInput: string, state: CoachState, ctx: CoachCtx)
 }
 
 const MENU_CHIPS = ['Lên lịch tập tuần', 'Đổi buổi hôm nay', 'Xem tiến độ của tôi', 'Protein ăn bao nhiêu?']
+
+function muscleReply(id: string, ctx: CoachCtx): CoachReply {
+  if (id === 'atlas' || !MUSCLE_INFO[id]) {
+    return {
+      state: { flow: 'idle' },
+      msgs: [bot('Mô hình cơ thể nằm ở tab Hôm nay. Mở lên để kéo xoay, phóng to và bấm từng nhóm cơ.', {
+        link: { muscle: 'atlas', label: 'Mở mô hình cơ thể' },
+        chips: MENU_CHIPS
+      })]
+    }
+  }
+  const info = MUSCLE_INFO[id]
+  const names = exercisesForRegion(ctx.exercises, id).slice(0, 4).map(ex => ex.nameEn)
+  const list = names.length > 0 ? names.join(', ') : 'chưa có bài khớp trong thư viện'
+  return {
+    state: { flow: 'idle' },
+    msgs: [bot(`${info.title}: ${info.about} Bài trong app: ${list}.`, {
+      link: { muscle: id, label: `Mở ${info.title} trong app` },
+      chips: MENU_CHIPS
+    })]
+  }
+}
 
 function progressLine(ctx: CoachCtx): string {
   return `Lửa hiện tại: ${ctx.facts.streak} ngày. ${coachFactsLine(ctx.facts)} Mục tiêu hồ sơ: ${GOAL_LABEL[ctx.facts.goal]}. Gợi ý này đọc nhật ký trên máy, không thay huấn luyện viên.`

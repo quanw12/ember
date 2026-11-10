@@ -59,6 +59,7 @@ function AppShell({ onUsersChanged }: { onUsersChanged: () => void }) {
   const [coachOpen, setCoachOpen] = useState(false)
   const [visited, setVisited] = useState<Set<Tab>>(new Set(['today']))
   const [tracking, setTracking] = useState(false)
+  const [atlas, setAtlas] = useState<{ id: string; token: number } | null>(null)
   const [seedError, setSeedError] = useState('')
   const seedOnce = useRef<Promise<void> | null>(null)
   // null = đã nạp xong và chưa có profile (hiện onboarding); undefined = đang nạp
@@ -75,6 +76,18 @@ function AppShell({ onUsersChanged }: { onUsersChanged: () => void }) {
     setGymInit({ kind: 'weekly' })
     setVisited(tabs => new Set([...tabs, 'gym']))
     setTab('gym')
+  }
+
+  const openExercise = (slug: string) => {
+    setGymInit({ kind: 'detail', slug })
+    setVisited(tabs => new Set([...tabs, 'gym']))
+    setTab('gym')
+  }
+
+  const openMuscle = (id: string) => {
+    setCoachOpen(false)
+    setTab('today')
+    setAtlas({ id, token: Date.now() })
   }
 
   // Seed riêng cho từng hồ sơ (chạy khi AppShell của hồ sơ đó mount).
@@ -139,7 +152,7 @@ function AppShell({ onUsersChanged }: { onUsersChanged: () => void }) {
       <main className="app" id="main-content">
         <AppStatus busy={tracking} />
         <Suspense fallback={<Loading />}>
-          <section hidden={tab !== 'today'} aria-label="Hôm nay"><Today onGoGym={() => { setVisited(tabs => new Set([...tabs, 'gym'])); setTab('gym') }} onQuickStart={startSession} onOpenPlanner={openPlanner} /></section>
+          <section hidden={tab !== 'today'} aria-label="Hôm nay"><Today onGoGym={() => { setVisited(tabs => new Set([...tabs, 'gym'])); setTab('gym') }} onQuickStart={startSession} onOpenPlanner={openPlanner} atlas={atlas} onOpenExercise={openExercise} /></section>
           {visited.has('gym') && <section hidden={tab !== 'gym'} aria-label="Gym"><Gym initial={gymInit} startSession={startSession} /></section>}
           {visited.has('run') && <section hidden={tab !== 'run'} aria-label="Chạy"><Run onTrackingChange={setTracking} /></section>}
           {visited.has('progress') && <section hidden={tab !== 'progress'} aria-label="Tiến trình"><Progress /></section>}
@@ -158,7 +171,7 @@ function AppShell({ onUsersChanged }: { onUsersChanged: () => void }) {
           ))}
         </div>
       </nav>
-      {coachOpen && <CoachChat onClose={() => setCoachOpen(false)} />}
+      {coachOpen && <CoachChat onClose={() => setCoachOpen(false)} onOpenMuscle={openMuscle} />}
       <button type="button" className="coach-fab" onClick={() => setCoachOpen(true)} aria-label="Mở Coach">
         <ChatIcon />
       </button>

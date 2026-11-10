@@ -325,6 +325,13 @@ export default function SessionRunner({ id, onDone }: { id: number; onDone: () =
         </div>
       ))}
 
+      {slugs.length === 0 && (
+        <div className="card">
+          <h2 className="h" style={{ marginTop: 0 }}>Buổi đã bắt đầu.</h2>
+          <div className="meta">Kết thúc khi xong. Thêm bài chỉ khi bạn muốn ghi set — không cần gắn bài vào kế hoạch trước.</div>
+        </div>
+      )}
+
       <button className="btn ghost" style={{ marginTop: 14 }} onClick={() => setPicker(true)}>+ Thêm bài tập</button>
       <button className="btn" style={{ marginTop: 10 }} onClick={finish}>KẾT THÚC BUỔI</button>
 
