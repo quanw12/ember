@@ -6,6 +6,7 @@ import { streakOf, workoutDates, isWeekend, weekKey, plannedThisWeek, localIso, 
 import { FlameIcon } from '../components/icons'
 import TargetPhoto from '../components/TargetPhoto'
 import TodayPlanCard from '../components/TodayPlanCard'
+import BodyStudio from '../components/BodyStudio'
 import { useToday } from '../lib/useToday'
 
 function greeting(name?: string): string {
@@ -16,10 +17,12 @@ function greeting(name?: string): string {
 
 const DAYS = ['Chủ nhật', 'Thứ hai', 'Thứ ba', 'Thứ tư', 'Thứ năm', 'Thứ sáu', 'Thứ bảy']
 
-export default function Today({ onGoGym, onQuickStart, onOpenPlanner }: {
+export default function Today({ onGoGym, onQuickStart, onOpenPlanner, atlas, onOpenExercise }: {
   onGoGym: () => void
   onQuickStart: (slugs: string[], name: string) => void
   onOpenPlanner: () => void
+  atlas: { id: string; token: number } | null
+  onOpenExercise: (slug: string) => void
 }) {
   const today = useToday()
   const profile = useLiveQuery(() => db.profile.get(1))
@@ -198,7 +201,7 @@ export default function Today({ onGoGym, onQuickStart, onOpenPlanner }: {
         <div className="card" style={{ borderColor: 'var(--red-deep)' }}>
           <div className="eyebrow">CUỐI TUẦN · LÊN LỊCH</div>
           <h2 className="h" style={{ marginTop: 4 }}>Tuần tới muốn tập những ngày nào, nhóm cơ nào?</h2>
-          <div className="meta">Chọn ngày + nhóm cơ trên bản đồ cơ thể, hệ thống gợi ý bài để bạn tự chọn — 2 phút là xong.</div>
+          <div className="meta">Bắt đầu và kết thúc buổi là đủ. Lịch tuần là tuỳ chọn, khi bạn muốn gợi ý bài theo ngày.</div>
           <button className="btn" style={{ marginTop: 12 }} onClick={onOpenPlanner}>LẬP LỊCH TUẦN MỚI</button>
           <button type="button" onClick={async () => { await db.settings.put({ key: 'weeklyNudgeOff', value: weekKey() }) }}
             style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: 12, marginTop: 10 }}>
@@ -208,6 +211,7 @@ export default function Today({ onGoGym, onQuickStart, onOpenPlanner }: {
       )}
 
       <TodayPlanCard onStart={onQuickStart} onGoPlans={onGoGym} />
+      <BodyStudio atlas={atlas} onOpenExercise={onOpenExercise} />
 
       {profile.sex === 'female' && cycleQ && (() => {
         const lastStart = cycleQ.find(c => c.kind === 'start')?.date

@@ -2,11 +2,12 @@
 
 | Nhiệm vụ | Nhánh/base | Kết quả |
 | --- | --- | --- |
-| Android thử nghiệm | feature/android-prototype / main | Build APK debug thành công, chưa QA thiết bị thật |
-| iOS sideload | feature/ios-sideload / feature/android-prototype | Commit 8857496, CI Mac thành công; có IPA chưa ký, người dùng tự ký |
-| Backend local | feature/auth-local / feature/ios-sideload | PocketBase Windows, migrations, quản trị users/blocked, snapshot theo owner; tests API thật |
-| Tài khoản trong app | feature/auth-local | Email/password, hồ sơ local theo tài khoản, snapshot thủ công, Google OAuth được nối qua SDK; test browser email/upload/restore |
-| Kích hoạt Google | Cấu hình của chủ máy chủ | Cần Client ID/Secret, consent screen/test users; chưa kiểm thử với Google thật |
-| Truy cập từ điện thoại ngoài LAN | Cấu hình triển khai | Chưa có HTTPS/domain; bản local chỉ hoạt động từ PC, không phát hành endpoint loopback cho user |
+| Android thử nghiệm | PR #14, đã trên main | APK debug build được. Chưa QA trên điện thoại thật |
+| iOS sideload | PR #15, đã trên main | IPA chưa ký, người dùng tự ký. Không build IPA trên Windows |
+| Backend local | PR #12, đã trên main | PocketBase, migrations, users/blocked, snapshot theo owner |
+| Tài khoản trong app | PR #12, đã trên main | Email/mật khẩu, hồ sơ local theo tài khoản, snapshot thủ công. Nút Google chỉ bật khi máy chủ báo provider |
+| Địa chỉ máy chủ trong app | main | Người dùng nhập `https://` hoặc IP trong mạng nhà. Trên điện thoại, `127.0.0.1` là chính máy đó. HTTP trong LAN được phép; ra ngoài mạng nhà cần HTTPS |
+| Kích hoạt Google | Cấu hình của chủ máy chủ | Cần Client ID/Secret và domain HTTPS. Chưa kiểm thử với Google thật |
+| QA điện thoại thật | Việc còn lại | Chưa chạy trên Android hoặc iPhone vật lý |
 
-Các nhánh phụ thuộc được giữ riêng, chưa merge main. IPA build trước bước auth nên chưa chứa tính năng tài khoản mới. Sau khi backend HTTPS và Google OAuth đã cấu hình/kiểm thử, cần build lại APK/IPA với URL thật. Không đưa database, admin credentials, Google secret hoặc chứng chỉ ký vào Git.
+PR #12 (auth-local), #13 (release/0.3.0-beta.1), #14 (android-prototype) và #15 (ios-sideload) đã nằm trên main. Việc còn lại là thông tin Google, SMTP, QA máy thật và HTTPS khi truy cập từ ngoài mạng nhà. App không nhúng sẵn URL production. Không đưa database, mật khẩu quản trị, Google secret hoặc chứng chỉ ký vào Git.

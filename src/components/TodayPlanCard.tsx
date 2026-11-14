@@ -32,6 +32,7 @@ export default function TodayPlanCard({ onStart, onGoPlans }: {
         <>
           <h2 className="h" style={{ marginTop: 4 }}>Hôm nay: {slugs.length} bài</h2>
           <div className="meta">{slugs.map(s => nameOf(s).en).join(' · ')}</div>
+          <div className="meta">Bài đã có sẵn trong buổi. Bấm bắt đầu rồi kết thúc khi xong.</div>
           <button className="btn" style={{ marginTop: 12 }} onClick={() => onStart(slugs, `${active!.name} · ${weekdayShort(weekday)}`)}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
               <DumbbellIcon className="button-icon" /> BẮT ĐẦU TẬP
@@ -40,14 +41,15 @@ export default function TodayPlanCard({ onStart, onGoPlans }: {
         </>
       ) : (
         <>
-          <h2 className="h" style={{ marginTop: 4 }}>Buổi tập đang trên đường về.</h2>
-          <div className="meta">
-            {active
-              ? `Hôm nay ${weekdayShort(weekday)} là ngày nghỉ theo ${active.name}. Muốn tập tự do thì sang Thư viện, hoặc nhờ Coach đổi buổi.`
-              : 'Chọn kế hoạch bên dưới hoặc nhờ Coach lên lịch — rồi Hôm nay sẽ tự chỉ bài.'}
-          </div>
+          <h2 className="h" style={{ marginTop: 4 }}>Sẵn sàng vào buổi.</h2>
+          <div className="meta">Bấm bắt đầu, tập xong thì kết thúc. Kế hoạch và thư viện để bạn tự xem — không cần thêm từng bài vào lịch.</div>
+          <button className="btn" style={{ marginTop: 12 }} onClick={() => onStart([], 'Buổi tập tự do')}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
+              <DumbbellIcon className="button-icon" /> BẮT ĐẦU TẬP
+            </span>
+          </button>
           {onGoPlans && (
-            <button className="btn ghost" style={{ marginTop: 12 }} onClick={onGoPlans}>Xem kế hoạch</button>
+            <button className="btn ghost" onClick={onGoPlans}>Xem kế hoạch</button>
           )}
         </>
       )}
